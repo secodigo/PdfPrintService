@@ -6,6 +6,12 @@ import lombok.Data;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import lombok.Data;
+import java.util.List;
+import java.util.Map;
+
 @Data
 public class ReportData {
 
@@ -15,7 +21,7 @@ public class ReportData {
     @NotBlank
     private String title;
 
-    private Map<String, String> headerData;
+    private HeaderConfig headerConfig; // Nova configuração flexível para o cabeçalho
 
     private Map<String, String> footerData;
 
