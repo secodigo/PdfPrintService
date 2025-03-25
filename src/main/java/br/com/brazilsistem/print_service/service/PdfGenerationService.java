@@ -1,6 +1,7 @@
 package br.com.brazilsistem.print_service.service;
 
 
+import br.com.brazilsistem.print_service.model.ColumnStyle;
 import br.com.brazilsistem.print_service.model.PdfSettings;
 import br.com.brazilsistem.print_service.model.ReportData;
 import br.com.brazilsistem.print_service.model.Section;
@@ -217,11 +218,13 @@ public class PdfGenerationService {
             Cell headerCell = new Cell()
                     .add(new Paragraph(columnName))
                     .setBackgroundColor(GREEN_CUSTOM)
-                    .setTextAlignment(TextAlignment.LEFT)
                     .setBorder(Border.NO_BORDER)
                     .setFontColor(COLOR_FONT_TITLE)
-                    .setPadding(0f)
                     .setFont(boldFont);
+
+            // Aplica estilos de cabeçalho se definidos
+            applyColumnStyles(headerCell, section, columnName, true);
+
             table.addHeaderCell(headerCell);
         }
 
@@ -229,18 +232,195 @@ public class PdfGenerationService {
         for (Map<String, Object> rowData : section.getData()) {
             for (String columnName : section.getColumns()) {
                 Object value = rowData.getOrDefault(columnName, "");
+                String formattedValue = formatCellValue(value, section, columnName);
 
                 Cell cell = new Cell()
-                        .add(new Paragraph(value.toString()))
-                        .setTextAlignment(TextAlignment.LEFT)
+                        .add(new Paragraph(formattedValue))
                         .setPadding(0f)
                         .setBorder(Border.NO_BORDER);
+
+                // Aplica estilos de célula
+                applyColumnStyles(cell, section, columnName, false);
 
                 table.addCell(cell);
             }
         }
 
         document.add(table);
+    }
+
+    // Método para aplicar estilos à célula
+    private void applyColumnStyles(Cell cell, Section section, String columnName, boolean isHeader) throws IOException {
+        if (section.getColumnStyles() == null || !section.getColumnStyles().containsKey(columnName)) {
+            return; // Sem estilo definido para esta coluna
+        }
+
+        ColumnStyle style = section.getColumnStyles().get(columnName);
+        if (style == null) {
+            return;
+        }
+
+        // Aplicar alinhamento
+        if (style.getAlignment() != null) {
+            TextAlignment alignment = getTextAlignment(style.getAlignment());
+            cell.setTextAlignment(alignment);
+        }
+
+        // Fonte e estilo de fonte
+        PdfFont font = determineFont(style.getBold(), style.getItalic());
+        if (font != null) {
+            cell.setFont(font);
+        }
+
+        // Tamanho da fonte
+        if (style.getFontSize() != null) {
+            cell.setFontSize(style.getFontSize());
+        }
+
+        // Cor do texto
+        if (style.getFontColor() != null) {
+            Color color = parseColor(style.getFontColor());
+            if (color != null) {
+                cell.setFontColor(color);
+            }
+        }
+
+        // Cor de fundo (apenas para células de dados, não para cabeçalho)
+        if (!isHeader && style.getBackgroundColor() != null) {
+            Color bgColor = parseColor(style.getBackgroundColor());
+            if (bgColor != null) {
+                cell.setBackgroundColor(bgColor);
+            }
+        }
+
+        // Padding
+        if (style.getPadding() != null) {
+            cell.setPadding(style.getPadding());
+        }
+
+        // Borda
+        if (style.getBorder() != null) {
+            switch (style.getBorder().toUpperCase()) {
+                case "SOLID" -> cell.setBorder(new SolidBorder(0.5f));
+                default -> cell.setBorder(Border.NO_BORDER);
+            }
+        }
+    }
+
+    private String formatCellValue(Object value, Section section, String columnName) {
+        if (value == null) {
+            return "";
+        }
+
+        if (section.getColumnStyles() == null ||
+                !section.getColumnStyles().containsKey(columnName) ||
+                section.getColumnStyles().get(columnName) == null ||
+                section.getColumnStyles().get(columnName).getFormat() == null) {
+            return value.toString(); // Sem formatação especial
+        }
+
+        String format = section.getColumnStyles().get(columnName).getFormat().toUpperCase();
+
+        try {
+            switch (format) {
+                case "CURRENCY":
+                    if (value instanceof Number) {
+                        // Formatação para moeda brasileira
+                        return String.format("R$ %.2f", ((Number) value).doubleValue())
+                                .replace(".", ",")
+                                .replace(",00", ",00");
+                    }
+                    break;
+
+                case "PERCENTAGE":
+                    if (value instanceof Number) {
+                        return String.format("%.2f%%", ((Number) value).doubleValue())
+                                .replace(".", ",");
+                    }
+                    break;
+
+                case "DATE":
+                    // Implementar formatação de data conforme necessário
+                    break;
+
+                // Adicione outros formatos conforme necessário
+            }
+        } catch (Exception e) {
+            // Em caso de erro de formatação, retorna o valor original
+            return value.toString();
+        }
+
+        return value.toString();
+    }
+
+    private PdfFont determineFont(Boolean bold, Boolean italic) throws IOException {
+        boolean isBold = bold != null && bold;
+        boolean isItalic = italic != null && italic;
+
+        if (isBold && isItalic) {
+            return PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLDOBLIQUE);
+        } else if (isBold) {
+            return PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
+        } else if (isItalic) {
+            return PdfFontFactory.createFont(StandardFonts.HELVETICA_OBLIQUE);
+        }
+
+        return null; // Usa a fonte padrão
+    }
+
+    private TextAlignment getTextAlignment(String alignment) {
+        if (alignment == null) {
+            return TextAlignment.LEFT;
+        }
+
+        return switch (alignment.toUpperCase()) {
+            case "RIGHT" -> TextAlignment.RIGHT;
+            case "CENTER" -> TextAlignment.CENTER;
+            case "JUSTIFIED" -> TextAlignment.JUSTIFIED;
+            default -> TextAlignment.LEFT;
+        };
+    }
+
+    private Color parseColor(String colorString) {
+        if (colorString == null || colorString.isEmpty()) {
+            return null;
+        }
+
+        try {
+            // Se for um código de cor hex
+            if (colorString.startsWith("#")) {
+                String hex = colorString.substring(1);
+                if (hex.length() == 6) {
+                    int r = Integer.parseInt(hex.substring(0, 2), 16);
+                    int g = Integer.parseInt(hex.substring(2, 4), 16);
+                    int b = Integer.parseInt(hex.substring(4, 6), 16);
+                    return new DeviceRgb(r, g, b);
+                }
+            }
+            // Cores predefinidas
+            else {
+                switch (colorString.toUpperCase()) {
+                    case "RED":
+                        return ColorConstants.RED;
+                    case "GREEN":
+                        return ColorConstants.GREEN;
+                    case "BLUE":
+                        return ColorConstants.BLUE;
+                    case "BLACK":
+                        return ColorConstants.BLACK;
+                    case "WHITE":
+                        return ColorConstants.WHITE;
+                    case "GRAY":
+                        return ColorConstants.GRAY;
+                    // Adicione outras cores conforme necessário
+                }
+            }
+        } catch (Exception e) {
+            // Em caso de erro, retorna null
+            return null;
+        }
+
+        return null;
     }
 
     private void addPlaceholderForChart(Document document, Section section) {
