@@ -1,6 +1,5 @@
 package br.com.brazilsistem.print_service.exception;
 
-
 import br.com.brazilsistem.print_service.model.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +40,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error("Formato de requisição inválido: " + ex.getMessage()));
+    }
+
+    @ExceptionHandler(PdfGenerationException.class)
+    public ResponseEntity<ApiResponse> handlePdfGenerationException(PdfGenerationException ex) {
+        logger.error("Erro na geração do PDF", ex);
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Erro na geração do PDF: " + ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

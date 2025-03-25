@@ -1,5 +1,6 @@
 package br.com.brazilsistem.print_service.resource;
 
+import br.com.brazilsistem.print_service.exception.PdfGenerationException;
 import br.com.brazilsistem.print_service.model.ApiResponse;
 import br.com.brazilsistem.print_service.model.ReportData;
 import br.com.brazilsistem.print_service.service.PdfGenerationService;
@@ -49,6 +50,11 @@ public class PdfResource {
             logger.info("PDF gerado com sucesso: {} bytes", pdfBytes.length);
 
             return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+        } catch (PdfGenerationException e) {
+            logger.error("Erro no processo de geração do PDF", e);
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
         } catch (IOException e) {
             logger.error("Erro ao gerar PDF", e);
             return ResponseEntity
@@ -78,6 +84,11 @@ public class PdfResource {
             logger.info("PDF para pré-visualização gerado com sucesso: {} bytes", pdfBytes.length);
 
             return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+        } catch (PdfGenerationException e) {
+            logger.error("Erro no processo de geração do PDF para pré-visualização", e);
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
         } catch (IOException e) {
             logger.error("Erro ao gerar PDF para pré-visualização", e);
             return ResponseEntity
