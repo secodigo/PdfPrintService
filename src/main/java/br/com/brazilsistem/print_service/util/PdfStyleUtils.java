@@ -35,7 +35,7 @@ public final class PdfStyleUtils {
     public static final String DEFAULT_ALIGNMENT = "LEFT";
     public static final Boolean DEFAULT_BOLD = false;
     public static final Boolean DEFAULT_ITALIC = false;
-    public static final Float DEFAULT_FONT_SIZE = 10f;
+    public static final Float DEFAULT_FONT_SIZE = 8f;
     public static final String DEFAULT_FONT_COLOR = "#000000";
     public static final Float DEFAULT_PADDING = 0f;
     public static final String DEFAULT_BORDER = "NONE";

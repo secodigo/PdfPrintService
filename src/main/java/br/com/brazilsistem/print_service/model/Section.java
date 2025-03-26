@@ -23,4 +23,8 @@ public class Section {
 
     // Seções aninhadas
     private List<NestedSection> nestedSections;
+
+    // Novas propriedades para controle de cores alternadas na seção principal
+    private Boolean useAlternateRowColor = false; // Se deve usar cores alternadas
+    private String alternateRowColor = "#F5F5F5"; // Cor alternativa (cinza claro padrão)
 }
