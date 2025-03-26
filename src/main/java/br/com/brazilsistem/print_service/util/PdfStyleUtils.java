@@ -13,6 +13,8 @@ import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.properties.TextAlignment;
 
 import java.io.IOException;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 /**
  * Classe utilitária para lidar com estilos nos PDFs
@@ -29,64 +31,89 @@ public final class PdfStyleUtils {
     public static final String FONT_BOLD = StandardFonts.HELVETICA_BOLD;
     public static final String FONT_NORMAL = StandardFonts.HELVETICA;
 
+    // Valores padrão para estilos
+    public static final String DEFAULT_ALIGNMENT = "LEFT";
+    public static final Boolean DEFAULT_BOLD = false;
+    public static final Boolean DEFAULT_ITALIC = false;
+    public static final Float DEFAULT_FONT_SIZE = 10f;
+    public static final String DEFAULT_FONT_COLOR = "#000000";
+    public static final Float DEFAULT_PADDING = 0f;
+    public static final String DEFAULT_BORDER = "NONE";
+
     /**
-     * Aplica estilos definidos em uma coluna para uma célula
+     * Aplica estilos definidos em uma coluna para uma célula.
+     * Se o parâmetro style for nulo, serão aplicados valores padrão.
      */
     public static void applyCellStyle(Cell cell, ColumnStyle style) throws IOException {
-        if (style == null) return;
+        // Se style for nulo, cria um novo objeto com valores padrão
+        ColumnStyle effectiveStyle = style;
+        if (effectiveStyle == null) {
+            effectiveStyle = getDefaultColumnStyle();
+        }
 
         // Aplicar alinhamento
-        if (style.getAlignment() != null) {
-            cell.setTextAlignment(getTextAlignment(style.getAlignment()));
-        }
+        cell.setTextAlignment(getTextAlignment(effectiveStyle.getAlignment()));
 
         // Tamanho da fonte
-        if (style.getFontSize() != null) {
-            cell.setFontSize(style.getFontSize());
-        }
+        cell.setFontSize(effectiveStyle.getFontSize() != null ?
+                effectiveStyle.getFontSize() : DEFAULT_FONT_SIZE);
 
         // Cor da fonte
-        if (style.getFontColor() != null) {
-            Color color = parseColor(style.getFontColor());
+        if (effectiveStyle.getFontColor() != null) {
+            Color color = parseColor(effectiveStyle.getFontColor());
             if (color != null) {
                 cell.setFontColor(color);
             }
         }
 
         // Cor de fundo
-        if (style.getBackgroundColor() != null) {
-            Color bgColor = parseColor(style.getBackgroundColor());
+        if (effectiveStyle.getBackgroundColor() != null) {
+            Color bgColor = parseColor(effectiveStyle.getBackgroundColor());
             if (bgColor != null) {
                 cell.setBackgroundColor(bgColor);
             }
         }
 
-        // Padding personalizado
-        if (style.getPadding() != null) {
-            cell.setPadding(style.getPadding());
-        }
+        // Padding
+        cell.setPadding(effectiveStyle.getPadding() != null ?
+                effectiveStyle.getPadding() : DEFAULT_PADDING);
 
         // Fonte e estilo de fonte
-        PdfFont font = determineFont(style.getBold(), style.getItalic());
-        if (font != null) {
-            cell.setFont(font);
-        }
+        PdfFont font = determineFont(effectiveStyle.getBold(), effectiveStyle.getItalic());
+        cell.setFont(font);
 
         // Borda
-        if (style.getBorder() != null) {
-            switch (style.getBorder().toUpperCase()) {
-                case "SOLID" -> cell.setBorder(new SolidBorder(0.5f));
-                default -> cell.setBorder(Border.NO_BORDER);
-            }
+        String borderStyle = effectiveStyle.getBorder() != null ?
+                effectiveStyle.getBorder() : DEFAULT_BORDER;
+
+        switch (borderStyle.toUpperCase()) {
+            case "SOLID" -> cell.setBorder(new SolidBorder(0.5f));
+            default -> cell.setBorder(Border.NO_BORDER);
         }
     }
 
     /**
-     * Determina a fonte com base nos atributos de negrito e itálico
+     * Cria e retorna um objeto ColumnStyle com valores padrão
+     */
+    public static ColumnStyle getDefaultColumnStyle() {
+        ColumnStyle defaultStyle = new ColumnStyle();
+        defaultStyle.setAlignment(DEFAULT_ALIGNMENT);
+        defaultStyle.setBold(DEFAULT_BOLD);
+        defaultStyle.setItalic(DEFAULT_ITALIC);
+        defaultStyle.setFontSize(DEFAULT_FONT_SIZE);
+        defaultStyle.setFontColor(DEFAULT_FONT_COLOR);
+        defaultStyle.setPadding(DEFAULT_PADDING);
+        defaultStyle.setBorder(DEFAULT_BORDER);
+        return defaultStyle;
+    }
+
+    /**
+     * Determina a fonte com base nos atributos de negrito e itálico.
+     * Se os parâmetros forem nulos, usa os valores padrão.
      */
     public static PdfFont determineFont(Boolean bold, Boolean italic) throws IOException {
-        boolean isBold = bold != null && bold;
-        boolean isItalic = italic != null && italic;
+        boolean isBold = bold != null ? bold : DEFAULT_BOLD;
+        boolean isItalic = italic != null ? italic : DEFAULT_ITALIC;
 
         if (isBold && isItalic) {
             return PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLDOBLIQUE);
@@ -100,11 +127,12 @@ public final class PdfStyleUtils {
     }
 
     /**
-     * Obtém o alinhamento de texto correspondente à string
+     * Obtém o alinhamento de texto correspondente à string.
+     * Se o parâmetro for nulo, retorna o alinhamento padrão.
      */
     public static TextAlignment getTextAlignment(String alignment) {
         if (alignment == null) {
-            return TextAlignment.LEFT;
+            alignment = DEFAULT_ALIGNMENT;
         }
 
         return switch (alignment.toUpperCase()) {
@@ -155,7 +183,8 @@ public final class PdfStyleUtils {
     }
 
     /**
-     * Formata o valor da célula com base no formato especificado
+     * Formata o valor da célula com base no formato especificado.
+     * Se o ColumnStyle for nulo, retorna a representação de string padrão do valor.
      */
     public static String formatCellValue(Object value, ColumnStyle style) {
         if (value == null) {
@@ -168,20 +197,39 @@ public final class PdfStyleUtils {
 
         String format = style.getFormat().toUpperCase();
 
+        // Criar formatador para o local brasileiro
+        NumberFormat formatter = NumberFormat.getInstance(new Locale("pt", "BR"));
+
         try {
             return switch (format) {
                 case "CURRENCY" -> {
                     if (value instanceof Number) {
-                        // Formatação para moeda brasileira
-                        yield String.format("R$ %.2f", ((Number) value).doubleValue())
-                                .replace(".", ",");
+                        // Usar NumberFormat para moeda brasileira
+                        NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+                        yield currencyFormatter.format(((Number) value).doubleValue());
                     }
                     yield value.toString();
                 }
                 case "PERCENTAGE" -> {
                     if (value instanceof Number) {
-                        yield String.format("%.2f%%", ((Number) value).doubleValue())
-                                .replace(".", ",");
+                        // Usar NumberFormat para percentuais em formato brasileiro
+                        NumberFormat percentFormatter = NumberFormat.getPercentInstance(new Locale("pt", "BR"));
+                        percentFormatter.setMaximumFractionDigits(2);
+                        yield percentFormatter.format(((Number) value).doubleValue() / 100);
+                    }
+                    yield value.toString();
+                }
+                case "NUMBER" -> {
+                    if (value instanceof Number) {
+                        formatter.setMaximumFractionDigits(2);
+                        formatter.setMinimumFractionDigits(2);
+                        yield formatter.format(((Number) value).doubleValue());
+                    }
+                    yield value.toString();
+                }
+                case "INTEGER" -> {
+                    if (value instanceof Number) {
+                        yield String.valueOf(((Number) value).intValue());
                     }
                     yield value.toString();
                 }

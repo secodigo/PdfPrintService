@@ -20,4 +20,7 @@ public class Section {
     private String content; // Para seções de texto
 
     private Map<String, Object> additionalAttributes;
+
+    // Seções aninhadas
+    private List<NestedSection> nestedSections;
 }
