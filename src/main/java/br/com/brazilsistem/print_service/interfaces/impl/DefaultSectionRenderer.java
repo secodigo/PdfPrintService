@@ -49,7 +49,7 @@ public class DefaultSectionRenderer implements SectionRenderer {
                 .setFont(boldFont)
                 .setFontColor(PdfStyleUtils.GREEN_CUSTOM)
                 .setFontSize(14)
-                .setMarginTop(15)
+                .setMarginTop(10)
                 .setMultipliedLeading(0.5f);
         document.add(sectionTitle);
     }

@@ -241,4 +241,8 @@ public final class PdfStyleUtils {
             return value.toString();
         }
     }
+
+    public static PdfFont getFontBold() throws IOException {
+        return PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
+    }
 }
