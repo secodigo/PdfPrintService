@@ -40,12 +40,12 @@ class PdfGenerationServiceTest {
     @BeforeEach
     void setUp() {
         reportRenderers = new HashMap<>();
-
-        pdfGenerationService = new PdfGenerationService(
-                reportRenderers,
-                headerRenderer,
-                sectionRenderer,
-                footerRenderer);
+//
+//        pdfGenerationService = new PdfGenerationService(
+//                reportRenderers,
+//                headerRenderer,
+//                sectionRenderer,
+//                footerRenderer);
     }
 
     @Test

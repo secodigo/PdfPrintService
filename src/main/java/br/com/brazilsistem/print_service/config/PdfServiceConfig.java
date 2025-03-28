@@ -1,10 +1,7 @@
 package br.com.brazilsistem.print_service.config;
 
 import br.com.brazilsistem.print_service.interfaces.SectionTypeRenderer;
-import br.com.brazilsistem.print_service.interfaces.impl.ChartSectionRenderer;
-import br.com.brazilsistem.print_service.interfaces.impl.ImageSectionRenderer;
-import br.com.brazilsistem.print_service.interfaces.impl.TableSectionRenderer;
-import br.com.brazilsistem.print_service.interfaces.impl.TextSectionRenderer;
+import br.com.brazilsistem.print_service.interfaces.impl.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
