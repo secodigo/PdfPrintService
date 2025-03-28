@@ -28,8 +28,6 @@ public final class PdfStyleUtils {
     // Constantes reutilizáveis para cores e fontes
     public static final DeviceRgb GREEN_CUSTOM = new DeviceRgb(8, 130, 65);
     public static final Color COLOR_FONT_TITLE = ColorConstants.WHITE;
-    public static final String FONT_BOLD = StandardFonts.HELVETICA_BOLD;
-    public static final String FONT_NORMAL = StandardFonts.HELVETICA;
 
     // Valores padrão para estilos
     public static final String DEFAULT_ALIGNMENT = "LEFT";

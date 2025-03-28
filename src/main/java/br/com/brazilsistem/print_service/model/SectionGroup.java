@@ -29,13 +29,6 @@ public class SectionGroup {
     private Float columnGap = 10f;
 
     /**
-     * Indica se as colunas devem ter alturas iguais.
-     * - true: as colunas terão a mesma altura (a altura da coluna mais alta)
-     * - false: cada coluna terá sua própria altura com base em seu conteúdo
-     */
-    private Boolean equalColumnHeight = false;
-
-    /**
      * Identificador do grupo para referência
      */
     private String groupId;

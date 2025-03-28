@@ -40,22 +40,4 @@ public class PdfServiceConfig {
         return renderers;
     }
 
-    /**
-     * Registra os renderizadores de tipos de relatório adicionais que não são
-     * automaticamente detectados pelo componente scan do Spring.
-     *
-     * @param financialReportRenderer Renderizador de relatórios financeiros
-     * @return Map contendo os renderizadores de relatório
-     */
-//    @Bean
-//    public Map<String, ReportTypeRenderer> reportTypeRenderers(
-//            FinancialReportRenderer financialReportRenderer) {
-//
-//        Map<String, ReportTypeRenderer> renderers = new HashMap<>();
-//        renderers.put("financial", financialReportRenderer);
-//
-//        // Adicione outros renderizadores de relatório aqui
-//
-//        return renderers;
-//    }
 }
