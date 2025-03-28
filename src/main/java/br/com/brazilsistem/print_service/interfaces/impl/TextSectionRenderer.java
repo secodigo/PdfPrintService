@@ -7,6 +7,8 @@ import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+
 @Component("text")
 public class TextSectionRenderer implements SectionTypeRenderer {
 
@@ -23,7 +25,7 @@ public class TextSectionRenderer implements SectionTypeRenderer {
     }
 
     @Override
-    public void renderSectionContentInCell(Cell cell, Section section) {
+    public void renderSectionContent(Cell cell, Section section) throws IOException {
         if (section.getContent() != null && !section.getContent().isEmpty()) {
             Paragraph paragraph = new Paragraph(section.getContent())
                     .setMarginTop(5)

@@ -3,7 +3,6 @@ package br.com.brazilsistem.print_service.interfaces.impl;
 import br.com.brazilsistem.print_service.interfaces.SectionRenderer;
 import br.com.brazilsistem.print_service.interfaces.SectionTypeRenderer;
 import br.com.brazilsistem.print_service.model.Section;
-
 import br.com.brazilsistem.print_service.util.PdfStyleUtils;
 import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.kernel.font.PdfFont;
@@ -51,7 +50,6 @@ public class DefaultSectionRenderer implements SectionRenderer {
      * @param section Seção a ser renderizada
      * @throws IOException Se ocorrer erro ao renderizar a seção
      */
-    @Override
     public void renderSectionInCell(Cell cell, Section section) throws IOException {
         // Adicionar título da seção se existir
         if (section.getTitle() != null && !section.getTitle().isEmpty()) {
@@ -60,11 +58,9 @@ public class DefaultSectionRenderer implements SectionRenderer {
 
         // Verificar o tipo de seção e delegar para renderizador específico
         String sectionType = section.getType().toLowerCase();
-        SectionTypeRenderer renderer = sectionTypeRenderers.get(sectionType);
-
-        if (renderer != null) {
-            // Usar o novo método na interface para renderizar dentro da célula
-            renderer.renderSectionContentInCell(cell, section);
+        if (sectionTypeRenderers.containsKey(sectionType)) {
+            // Usar o método específico para renderização em células
+            sectionTypeRenderers.get(sectionType).renderSectionContent(cell, section);
         } else {
             // Se não houver renderizador específico, adiciona mensagem de aviso
             cell.add(new Paragraph("Tipo de seção não suportado: " + section.getType()));
@@ -72,7 +68,7 @@ public class DefaultSectionRenderer implements SectionRenderer {
     }
 
     private void renderSectionTitle(Document document, String title) throws IOException {
-        PdfFont boldFont = PdfStyleUtils.getFontBold();
+        PdfFont boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
         Paragraph sectionTitle = new Paragraph(title)
                 .setFont(boldFont)
                 .setFontColor(PdfStyleUtils.GREEN_CUSTOM)
@@ -83,7 +79,7 @@ public class DefaultSectionRenderer implements SectionRenderer {
     }
 
     private void renderSectionTitleInCell(Cell cell, String title) throws IOException {
-        PdfFont boldFont = PdfStyleUtils.getFontBold();
+        PdfFont boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
         Paragraph sectionTitle = new Paragraph(title)
                 .setFont(boldFont)
                 .setFontColor(PdfStyleUtils.GREEN_CUSTOM)

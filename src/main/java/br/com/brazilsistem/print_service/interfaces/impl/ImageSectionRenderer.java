@@ -24,11 +24,11 @@ public class ImageSectionRenderer implements SectionTypeRenderer {
     }
 
     @Override
-    public void renderSectionContentInCell(Cell cell, Section section) throws IOException {
+    public void renderSectionContent(Cell cell, Section section) throws IOException {
         Paragraph imagePlaceholder = new Paragraph("[Imagem seria exibida aqui]")
                 .setTextAlignment(TextAlignment.CENTER)
-                .setMarginTop(10)
-                .setMarginBottom(10);
+                .setMarginTop(5)
+                .setMarginBottom(5);
 
         cell.add(imagePlaceholder);
     }

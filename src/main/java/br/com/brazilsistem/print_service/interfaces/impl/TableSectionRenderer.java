@@ -38,7 +38,7 @@ public class TableSectionRenderer implements SectionTypeRenderer {
     }
 
     @Override
-    public void renderSectionContentInCell(Cell cell, Section section) throws IOException {
+    public void renderSectionContent(Cell cell, Section section) throws IOException {
         renderTableToTarget(cell, section);
     }
 

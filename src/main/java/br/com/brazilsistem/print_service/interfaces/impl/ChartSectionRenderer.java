@@ -25,13 +25,13 @@ public class ChartSectionRenderer implements SectionTypeRenderer {
     }
 
     @Override
-    public void renderSectionContentInCell(Cell cell, Section section) throws IOException {
+    public void renderSectionContent(Cell cell, Section section) throws IOException {
         Paragraph chartPlaceholder = new Paragraph("[Representação gráfica seria exibida aqui]")
                 .setTextAlignment(TextAlignment.CENTER)
-                .setMarginTop(10)
-                .setMarginBottom(10);
+                .setMarginTop(5)
+                .setMarginBottom(5);
 
         cell.add(chartPlaceholder);
-        cell.add(new Paragraph("Nota: A geração de gráficos requer bibliotecas adicionais").setFontSize(10));
+        cell.add(new Paragraph("Nota: A geração de gráficos requer bibliotecas adicionais.").setFontSize(8));
     }
 }

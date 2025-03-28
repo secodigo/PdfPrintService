@@ -12,21 +12,20 @@ import java.io.IOException;
  */
 public interface SectionTypeRenderer {
     /**
-     * Renderiza o conteúdo da seção no documento.
+     * Renderiza o conteúdo da seção diretamente no documento.
      *
      * @param document Documento onde o conteúdo será renderizado
-     * @param section Dados da seção a ser renderizada
-     * @throws IOException Se ocorrer erro durante a renderização
+     * @param section Seção a ser renderizada
+     * @throws IOException Se ocorrer erro ao renderizar o conteúdo
      */
     void renderSectionContent(Document document, Section section) throws IOException;
 
     /**
      * Renderiza o conteúdo da seção dentro de uma célula.
-     * Este método é útil quando a seção precisa ser renderizada como parte de um layout em colunas.
      *
      * @param cell Célula onde o conteúdo será renderizado
-     * @param section Dados da seção a ser renderizada
-     * @throws IOException Se ocorrer erro durante a renderização
+     * @param section Seção a ser renderizada
+     * @throws IOException Se ocorrer erro ao renderizar o conteúdo
      */
-    void renderSectionContentInCell(Cell cell, Section section) throws IOException;
+    void renderSectionContent(Cell cell, Section section) throws IOException;
 }
