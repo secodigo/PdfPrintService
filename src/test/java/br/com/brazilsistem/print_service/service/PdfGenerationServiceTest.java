@@ -2,7 +2,6 @@ package br.com.brazilsistem.print_service.service;
 
 import br.com.brazilsistem.print_service.interfaces.FooterRenderer;
 import br.com.brazilsistem.print_service.interfaces.HeaderRenderer;
-import br.com.brazilsistem.print_service.interfaces.ReportTypeRenderer;
 import br.com.brazilsistem.print_service.interfaces.SectionRenderer;
 import br.com.brazilsistem.print_service.model.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,11 +34,9 @@ class PdfGenerationServiceTest {
 
 
     private PdfGenerationService pdfGenerationService;
-    private Map<String, ReportTypeRenderer> reportRenderers;
 
     @BeforeEach
     void setUp() {
-        reportRenderers = new HashMap<>();
 //
 //        pdfGenerationService = new PdfGenerationService(
 //                reportRenderers,

@@ -27,14 +27,43 @@ import java.util.stream.Collectors;
 /**
  * Renderizador de seções de tabela em documentos PDF.
  * Responsável por renderizar tabelas, incluindo cabeçalhos e seções aninhadas.
+ * Esta versão inclui suporte para renderizar tanto diretamente no documento quanto dentro de células.
  */
 @Component("table")
 public class TableSectionRenderer implements SectionTypeRenderer {
 
     @Override
     public void renderSectionContent(Document document, Section section) throws IOException {
+        renderTableToTarget(document, section);
+    }
+
+    /**
+     * Renderiza uma tabela dentro de uma célula.
+     * Este método é usado quando a tabela faz parte de um layout em colunas.
+     *
+     * @param cell Célula que conterá a tabela
+     * @param section Seção contendo os dados da tabela
+     * @throws IOException Se ocorrer um erro ao aplicar estilos
+     */
+    public void renderSectionContent(Cell cell, Section section) throws IOException {
+        renderTableToTarget(cell, section);
+    }
+
+    /**
+     * Método comum que renderiza a tabela para um alvo (Document ou Cell)
+     *
+     * @param target Alvo onde a tabela será renderizada (Document ou Cell)
+     * @param section Seção contendo os dados da tabela
+     * @throws IOException Se ocorrer um erro ao aplicar estilos
+     */
+    private void renderTableToTarget(Object target, Section section) throws IOException {
         if (!hasValidTableData(section)) {
-            document.add(new Paragraph("Dados da tabela não fornecidos"));
+            Paragraph errorMsg = new Paragraph("Dados da tabela não fornecidos");
+            if (target instanceof Document) {
+                ((Document) target).add(errorMsg);
+            } else if (target instanceof Cell) {
+                ((Cell) target).add(errorMsg);
+            }
             return;
         }
 
@@ -48,12 +77,19 @@ public class TableSectionRenderer implements SectionTypeRenderer {
         addMainHeader(mainTable, section);
 
         // Adicionar cabeçalhos de seções aninhadas
-        addNestedHeaders(mainTable, nestedSectionsWithHeaders, section.getColumns().size());
+        if (!nestedSectionsWithHeaders.isEmpty()) {
+            addNestedHeaders(mainTable, nestedSectionsWithHeaders, section.getColumns().size());
+        }
 
         // Adicionar dados principais com possível alternância de cores
         addMainData(mainTable, section);
 
-        document.add(mainTable);
+        // Adicionar tabela ao alvo apropriado
+        if (target instanceof Document) {
+            ((Document) target).add(mainTable);
+        } else if (target instanceof Cell) {
+            ((Cell) target).add(mainTable);
+        }
     }
 
     /**
@@ -361,5 +397,4 @@ public class TableSectionRenderer implements SectionTypeRenderer {
             table.addCell(cell);
         }
     }
-
 }
