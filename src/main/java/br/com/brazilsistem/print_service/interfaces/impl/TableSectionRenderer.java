@@ -20,14 +20,14 @@ import com.itextpdf.layout.properties.VerticalAlignment;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Renderizador de seções de tabela em documentos PDF.
  * Responsável por renderizar tabelas, incluindo cabeçalhos e seções aninhadas.
- * Esta versão inclui suporte para renderizar tanto diretamente no documento quanto dentro de células.
+ * Esta versão inclui otimizações para um processamento mais eficiente dos dados.
  */
 @Component("table")
 public class TableSectionRenderer implements SectionTypeRenderer {
@@ -43,7 +43,31 @@ public class TableSectionRenderer implements SectionTypeRenderer {
     }
 
     /**
-     * Método comum que renderiza a tabela para um alvo (Document ou Cell)
+     * Classe auxiliar para armazenar o contexto de renderização da tabela
+     */
+    private static class TableRenderingContext {
+        float[] columnWidths;
+        Table mainTable;
+        PdfFont headerFont;
+        boolean useAlternateRowColor;
+        Color alternateRowColor;
+        List<NestedSection> nestedSections;
+        List<NestedHeaderInfo> nestedHeadersInfo;
+        int columnsSpan;
+    }
+
+    /**
+     * Classe auxiliar para armazenar informações de cabeçalho aninhado
+     */
+    private static class NestedHeaderInfo {
+        NestedSection section;
+        int level;
+        Color headerColor;
+    }
+
+    /**
+     * Método otimizado que renderiza a tabela para um alvo (Document ou Cell)
+     * usando uma abordagem de passagem única para melhorar a performance.
      *
      * @param target Alvo onde a tabela será renderizada (Document ou Cell)
      * @param section Seção contendo os dados da tabela
@@ -51,37 +75,181 @@ public class TableSectionRenderer implements SectionTypeRenderer {
      */
     private void renderTableToTarget(Object target, Section section) throws IOException {
         if (!hasValidTableData(section)) {
-            Paragraph errorMsg = new Paragraph("Dados da tabela não fornecidos");
-            if (target instanceof Document) {
-                ((Document) target).add(errorMsg);
-            } else if (target instanceof Cell) {
-                ((Cell) target).add(errorMsg);
-            }
+            addErrorMessageToTarget(target, "Dados da tabela não fornecidos");
             return;
         }
 
-        List<NestedSection> nestedSectionsWithHeaders = getNestedSectionsWithHeaders(section);
+        // Preparar todos os dados necessários antes da renderização
+        TableRenderingContext context = new TableRenderingContext();
+        context.columnWidths = TableStyleHelper.calculateColumnWidths(section);
+        context.mainTable = createBaseTable(context.columnWidths);
+        context.headerFont = PdfStyleUtils.getFontBold();
+        context.useAlternateRowColor = Boolean.TRUE.equals(section.getUseAlternateRowColor());
+        context.alternateRowColor = getAlternateRowColor(section);
+        context.nestedSections = section.getNestedSections();
+        context.columnsSpan = section.getColumns().size();
 
-        // Criar a tabela principal
-        float[] columnWidths = TableStyleHelper.calculateColumnWidths(section);
-        Table mainTable = createBaseTable(columnWidths);
+        // Preparar e adicionar cabeçalhos ao contexto
+        prepareHeaders(context, section);
 
-        // Adicionar cabeçalho principal
-        addMainHeader(mainTable, section);
-
-        // Adicionar cabeçalhos de seções aninhadas
-        if (!nestedSectionsWithHeaders.isEmpty()) {
-            addNestedHeaders(mainTable, nestedSectionsWithHeaders, section.getColumns().size());
-        }
-
-        // Adicionar dados principais com possível alternância de cores
-        addMainData(mainTable, section);
+        // Processar dados e renderizar em uma única passagem
+        renderDataWithNestedSections(context, section);
 
         // Adicionar tabela ao alvo apropriado
+        addTableToTarget(target, context.mainTable);
+    }
+
+    /**
+     * Adiciona uma mensagem de erro ao alvo (Document ou Cell)
+     */
+    private void addErrorMessageToTarget(Object target, String errorMessage) {
+        Paragraph errorMsg = new Paragraph(errorMessage);
         if (target instanceof Document) {
-            ((Document) target).add(mainTable);
+            ((Document) target).add(errorMsg);
         } else if (target instanceof Cell) {
-            ((Cell) target).add(mainTable);
+            ((Cell) target).add(errorMsg);
+        }
+    }
+
+    /**
+     * Adiciona a tabela ao alvo apropriado (Document ou Cell)
+     */
+    private void addTableToTarget(Object target, Table table) {
+        if (target instanceof Document) {
+            ((Document) target).add(table);
+        } else if (target instanceof Cell) {
+            ((Cell) target).add(table);
+        }
+    }
+
+    /**
+     * Prepara e adiciona todos os cabeçalhos necessários à tabela
+     */
+    private void prepareHeaders(TableRenderingContext context, Section section) throws IOException {
+        // Adicionar cabeçalho principal
+        for (String columnName : section.getColumns()) {
+            Cell headerCell = createHeaderCell(columnName,
+                    TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnName),
+                    context.headerFont);
+            headerCell.setBackgroundColor(ColorUtils.getHeaderColorForLevel(0));
+            context.mainTable.addHeaderCell(headerCell);
+        }
+
+        // Preparar informações para cabeçalhos de seções aninhadas
+        if (context.nestedSections != null && !context.nestedSections.isEmpty()) {
+            context.nestedHeadersInfo = new ArrayList<>();
+
+            for (int i = 0; i < context.nestedSections.size(); i++) {
+                NestedSection nestedSection = context.nestedSections.get(i);
+                if (Boolean.TRUE.equals(nestedSection.getShowHeaders())) {
+                    NestedHeaderInfo headerInfo = new NestedHeaderInfo();
+                    headerInfo.section = nestedSection;
+                    headerInfo.level = i + 1;
+                    headerInfo.headerColor = ColorUtils.getHeaderColorForLevel(headerInfo.level);
+                    context.nestedHeadersInfo.add(headerInfo);
+                }
+            }
+
+            // Adicionar cabeçalhos aninhados à tabela
+            if (!context.nestedHeadersInfo.isEmpty()) {
+                addNestedHeadersToTable(context);
+            }
+        }
+    }
+
+    /**
+     * Adiciona os cabeçalhos aninhados à tabela principal
+     */
+    private void addNestedHeadersToTable(TableRenderingContext context) throws IOException {
+        for (NestedHeaderInfo headerInfo : context.nestedHeadersInfo) {
+            NestedSection nestedSection = headerInfo.section;
+            int indentation = nestedSection.getIndentation() != null ? nestedSection.getIndentation() : 20;
+
+            // Criar célula contêiner para os cabeçalhos aninhados
+            Cell nestedHeadersContainer = new Cell(1, context.columnsSpan)
+                    .setBorder(Border.NO_BORDER)
+                    .setPaddings(0, 0, 0, 0)
+                    .setMargin(0)
+                    .setPaddingLeft(indentation);
+
+            // Adicionar título da seção aninhada, se existir
+            if (nestedSection.getTitle() != null && !nestedSection.getTitle().isEmpty()) {
+                Table titleTable = new Table(1)
+                        .setWidth(UnitValue.createPercentValue(100))
+                        .setBorder(Border.NO_BORDER)
+                        .setPaddings(0, 0, 0, 0)
+                        .setMargins(0, 0, 0, 0);
+
+                Cell titleCell = new Cell()
+                        .add(new Paragraph(nestedSection.getTitle()))
+                        .setFont(context.headerFont)
+                        .setFontSize(14)
+                        .setBorder(Border.NO_BORDER)
+                        .setBackgroundColor(headerInfo.headerColor)
+                        .setFontColor(PdfStyleUtils.COLOR_FONT_TITLE)
+                        .setPaddings(5, 5, 5, 5);
+
+                titleTable.addCell(titleCell);
+                nestedHeadersContainer.add(titleTable);
+            }
+
+            // Adicionar cabeçalhos de colunas da seção aninhada
+            float[] nestedWidths = TableStyleHelper.calculateNestedSectionWidths(nestedSection);
+
+            Table nestedHeadersTable = new Table(UnitValue.createPercentArray(nestedWidths))
+                    .setWidth(UnitValue.createPercentValue(100))
+                    .setBorder(Border.NO_BORDER)
+                    .setPaddings(0, 0, 0, 0)
+                    .setMargins(0, 0, 0, 0);
+
+            for (String columnName : nestedSection.getColumns()) {
+                Cell headerCell = createHeaderCell(columnName,
+                        TableStyleHelper.getColumnStyle(nestedSection.getColumnStyles(), columnName),
+                        context.headerFont);
+                headerCell.setBackgroundColor(headerInfo.headerColor);
+                nestedHeadersTable.addCell(headerCell);
+            }
+
+            nestedHeadersContainer.add(nestedHeadersTable);
+            context.mainTable.addHeaderCell(nestedHeadersContainer);
+        }
+    }
+
+    /**
+     * Renderiza os dados e as seções aninhadas em uma única passagem
+     */
+    private void renderDataWithNestedSections(TableRenderingContext context, Section section) throws IOException {
+        int rowIndex = 0;
+        for (Map<String, Object> rowData : section.getData()) {
+            // Determinar cor para linha atual (alternando se necessário)
+            Color rowColor = null;
+            if (context.useAlternateRowColor && rowIndex % 2 == 1) {
+                rowColor = context.alternateRowColor;
+            }
+
+            // Adicionar linha de dados principal
+            addDataRow(context.mainTable, rowData, section.getColumns(),
+                    section.getColumnStyles(), false, rowColor);
+
+            // Processar seções aninhadas para esta linha na mesma iteração
+            if (context.nestedSections != null && !context.nestedSections.isEmpty()) {
+                for (NestedSection nestedSection : context.nestedSections) {
+                    if (rowData.containsKey(nestedSection.getSourceField()) &&
+                            rowData.get(nestedSection.getSourceField()) instanceof List) {
+
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> nestedData =
+                                (List<Map<String, Object>>) rowData.get(nestedSection.getSourceField());
+
+                        if (nestedData != null && !nestedData.isEmpty()) {
+                            renderNestedSectionData(context.mainTable, nestedSection,
+                                    nestedData, context.columnsSpan);
+                        }
+                    }
+                }
+            }
+
+            rowIndex++;
         }
     }
 
@@ -94,19 +262,6 @@ public class TableSectionRenderer implements SectionTypeRenderer {
     }
 
     /**
-     * Filtra e retorna apenas as seções aninhadas que devem mostrar cabeçalhos.
-     */
-    private List<NestedSection> getNestedSectionsWithHeaders(Section section) {
-        if (section.getNestedSections() == null) {
-            return List.of();
-        }
-
-        return section.getNestedSections().stream()
-                .filter(ns -> Boolean.TRUE.equals(ns.getShowHeaders()))
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Cria a estrutura base da tabela.
      */
     private Table createBaseTable(float[] columnWidths) {
@@ -115,18 +270,6 @@ public class TableSectionRenderer implements SectionTypeRenderer {
                 .setBorder(Border.NO_BORDER)
                 .setMargins(0, 0, 0, 0)
                 .setPaddings(0, 0, 0, 0);
-    }
-
-    /**
-     * Adiciona o cabeçalho principal à tabela.
-     */
-    private void addMainHeader(Table mainTable, Section section) throws IOException {
-        PdfFont fontBold = PdfStyleUtils.getFontBold();
-        for (String columnName : section.getColumns()) {
-            Cell headerCell = createHeaderCell(columnName, TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnName), fontBold);
-            headerCell.setBackgroundColor(ColorUtils.getHeaderColorForLevel(0));
-            mainTable.addHeaderCell(headerCell);
-        }
     }
 
     /**
@@ -143,106 +286,6 @@ public class TableSectionRenderer implements SectionTypeRenderer {
 
         PdfStyleUtils.applyCellStyle(headerCell, style);
         return headerCell;
-    }
-
-    /**
-     * Adiciona cabeçalhos para todas as seções aninhadas que possuem showHeaders=true.
-     */
-    private void addNestedHeaders(Table mainTable, List<NestedSection> nestedSectionsWithHeaders,
-                                  int columnsSpan) throws IOException {
-        PdfFont fontBold = PdfStyleUtils.getFontBold();
-        for (int i = 0; i < nestedSectionsWithHeaders.size(); i++) {
-            NestedSection nestedSection = nestedSectionsWithHeaders.get(i);
-            int nestingLevel = i + 1;
-            DeviceRgb headerColor = ColorUtils.getHeaderColorForLevel(nestingLevel);
-            int indentation = nestedSection.getIndentation() != null ? nestedSection.getIndentation() : 20;
-
-            // Criar célula contêiner para os cabeçalhos aninhados
-            Cell nestedHeadersContainer = new Cell(1, columnsSpan)
-                    .setBorder(Border.NO_BORDER)
-                    .setPaddings(0, 0, 0, 0)
-                    .setMargin(0)
-                    .setPaddingLeft(indentation);
-
-            // Adicionar título da seção aninhada, se existir
-            addNestedSectionTitle(nestedHeadersContainer, nestedSection, headerColor, fontBold);
-
-            // Adicionar cabeçalhos de colunas da seção aninhada
-            addNestedSectionColumnHeaders(nestedHeadersContainer, nestedSection, headerColor, fontBold);
-
-            mainTable.addHeaderCell(nestedHeadersContainer);
-        }
-    }
-
-    /**
-     * Adiciona o título da seção aninhada, se existir.
-     */
-    private void addNestedSectionTitle(Cell container, NestedSection nestedSection,
-                                       Color headerColor, PdfFont boldFont) {
-        if (nestedSection.getTitle() != null && !nestedSection.getTitle().isEmpty()) {
-            Table titleTable = new Table(1)
-                    .setWidth(UnitValue.createPercentValue(100))
-                    .setBorder(Border.NO_BORDER)
-                    .setPaddings(0, 0, 0, 0)
-                    .setMargins(0, 0, 0, 0);
-
-            Cell titleCell = new Cell()
-                    .add(new Paragraph(nestedSection.getTitle()))
-                    .setFont(boldFont)
-                    .setFontSize(14)
-                    .setBorder(Border.NO_BORDER)
-                    .setBackgroundColor(headerColor)
-                    .setFontColor(PdfStyleUtils.COLOR_FONT_TITLE)
-                    .setPaddings(5, 5, 5, 5);
-
-            titleTable.addCell(titleCell);
-            container.add(titleTable);
-        }
-    }
-
-    /**
-     * Adiciona os cabeçalhos de colunas da seção aninhada.
-     */
-    private void addNestedSectionColumnHeaders(Cell container, NestedSection nestedSection,
-                                               Color headerColor, PdfFont boldFont) throws IOException {
-        float[] nestedWidths = TableStyleHelper.calculateNestedSectionWidths(nestedSection);
-
-        Table nestedHeadersTable = new Table(UnitValue.createPercentArray(nestedWidths))
-                .setWidth(UnitValue.createPercentValue(100))
-                .setBorder(Border.NO_BORDER)
-                .setPaddings(0, 0, 0, 0)
-                .setMargins(0, 0, 0, 0);
-
-        for (String columnName : nestedSection.getColumns()) {
-            Cell headerCell = createHeaderCell(columnName,
-                    TableStyleHelper.getColumnStyle(nestedSection.getColumnStyles(), columnName), boldFont);
-            headerCell.setBackgroundColor(headerColor);
-            nestedHeadersTable.addCell(headerCell);
-        }
-
-        container.add(nestedHeadersTable);
-    }
-
-    /**
-     * Adiciona os dados da seção principal à tabela, incluindo seções aninhadas.
-     */
-    private void addMainData(Table mainTable, Section section) throws IOException {
-        boolean useAlternateRowColor = Boolean.TRUE.equals(section.getUseAlternateRowColor());
-        Color alternateRowColor = getAlternateRowColor(section);
-
-        int rowIndex = 0;
-        for (Map<String, Object> rowData : section.getData()) {
-            // Determina a cor de fundo para linhas alternadas
-            Color rowColor = useAlternateRowColor && rowIndex % 2 == 1 ? alternateRowColor : null;
-
-            // Adiciona a linha principal
-            addDataRow(mainTable, rowData, section.getColumns(), section.getColumnStyles(), false, rowColor);
-
-            // Processa seções aninhadas, se existirem
-            processNestedSections(mainTable, section, rowData);
-
-            rowIndex++;
-        }
     }
 
     /**
@@ -263,29 +306,8 @@ public class TableSectionRenderer implements SectionTypeRenderer {
     }
 
     /**
-     * Processa e adiciona dados de seções aninhadas.
-     */
-    private void processNestedSections(Table mainTable, Section section, Map<String, Object> rowData) throws IOException {
-        if (section.getNestedSections() == null || section.getNestedSections().isEmpty()) {
-            return;
-        }
-
-        for (NestedSection nestedSection : section.getNestedSections()) {
-            if (!rowData.containsKey(nestedSection.getSourceField()) ||
-                    !(rowData.get(nestedSection.getSourceField()) instanceof List)) {
-                continue;
-            }
-
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> nestedData =
-                    (List<Map<String, Object>>) rowData.get(nestedSection.getSourceField());
-
-            renderNestedSectionData(mainTable, nestedSection, nestedData, section.getColumns().size());
-        }
-    }
-
-    /**
      * Adiciona uma linha de dados à tabela.
+     * Método unificado que funciona tanto para dados principais quanto aninhados.
      */
     private void addDataRow(Table table, Map<String, Object> rowData, List<String> columns,
                             Map<String, ColumnStyle> columnStyles, boolean isNestedRow,
@@ -347,51 +369,35 @@ public class TableSectionRenderer implements SectionTypeRenderer {
                 .setBorder(Border.NO_BORDER)
                 .setPaddings(0, 0, 0, 0)
                 .setMargins(0, 0, 0, 0)
-                .setHorizontalBorderSpacing(columnGap);;
+                .setHorizontalBorderSpacing(columnGap);
 
         int rowIndex = 0;
+        boolean useAlternateRowColor = Boolean.TRUE.equals(nestedSection.getUseAlternateRowColor());
+        String alternateRowColorStr = nestedSection.getAlternateRowColor();
+        Color alternateRowColor = null;
+
+        if (useAlternateRowColor && alternateRowColorStr != null) {
+            alternateRowColor = PdfStyleUtils.parseColor(alternateRowColorStr);
+        } else if (useAlternateRowColor) {
+            alternateRowColor = PdfStyleUtils.parseColor("#F5F5F5"); // Cor padrão
+        }
+
+        // Processar todas as linhas de dados aninhados
         for (Map<String, Object> nestedRow : nestedData) {
-            // Determina a cor de fundo para linhas alternadas
+            // Determinar cor para linha atual
             Color rowColor = null;
-            if (Boolean.TRUE.equals(nestedSection.getUseAlternateRowColor()) && rowIndex % 2 == 1) {
-                String alternateColor = nestedSection.getAlternateRowColor();
-                if (alternateColor == null) {
-                    alternateColor = "#F5F5F5"; // Cor padrão para linhas alternadas
-                }
-                rowColor = PdfStyleUtils.parseColor(alternateColor);
+            if (useAlternateRowColor && rowIndex % 2 == 1 && alternateRowColor != null) {
+                rowColor = alternateRowColor;
             }
 
-            addNestedDataRow(nestedTable, nestedRow, nestedSection, rowColor);
+            // Usar o mesmo método de addDataRow com flag de linha aninhada
+            addDataRow(nestedTable, nestedRow, nestedSection.getColumns(),
+                    nestedSection.getColumnStyles(), true, rowColor);
+
             rowIndex++;
         }
 
         nestedTableCell.add(nestedTable);
         parentTable.addCell(nestedTableCell);
-    }
-
-    /**
-     * Adiciona uma linha de dados aninhados à tabela.
-     */
-    private void addNestedDataRow(Table table, Map<String, Object> rowData,
-                                  NestedSection nestedSection, Color backgroundColor) throws IOException {
-        for (String columnName : nestedSection.getColumns()) {
-            Object value = rowData.getOrDefault(columnName, "");
-            ColumnStyle columnStyle = TableStyleHelper.getColumnStyle(nestedSection.getColumnStyles(), columnName);
-            String formattedValue = PdfStyleUtils.formatCellValue(value, columnStyle);
-
-            Cell cell = new Cell()
-                    .add(new Paragraph(formattedValue))
-                    .setBorder(Border.NO_BORDER);
-
-            // Aplica cor de fundo para linhas alternadas
-            if (backgroundColor != null) {
-                cell.setBackgroundColor(backgroundColor);
-            }
-
-            // Aplica estilos para a célula aninhada
-            PdfStyleUtils.applyCellStyle(cell, columnStyle);
-
-            table.addCell(cell);
-        }
     }
 }
