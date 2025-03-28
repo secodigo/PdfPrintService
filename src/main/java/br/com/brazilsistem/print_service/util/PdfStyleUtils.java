@@ -116,7 +116,7 @@ public final class PdfStyleUtils {
         if (isBold && isItalic) {
             return PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLDOBLIQUE);
         } else if (isBold) {
-            return PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
+            return getFontBold();
         } else if (isItalic) {
             return PdfFontFactory.createFont(StandardFonts.HELVETICA_OBLIQUE);
         }

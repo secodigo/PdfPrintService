@@ -3,6 +3,7 @@ package br.com.brazilsistem.print_service.interfaces.impl;
 import br.com.brazilsistem.print_service.interfaces.SectionTypeRenderer;
 import br.com.brazilsistem.print_service.model.Section;
 import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.properties.TextAlignment;
 import org.springframework.stereotype.Component;
@@ -21,5 +22,16 @@ public class ChartSectionRenderer implements SectionTypeRenderer {
 
         document.add(chartPlaceholder);
         document.add(new Paragraph("Nota: A geração de gráficos requer bibliotecas adicionais como JFreeChart").setFontSize(10));
+    }
+
+    @Override
+    public void renderSectionContentInCell(Cell cell, Section section) throws IOException {
+        Paragraph chartPlaceholder = new Paragraph("[Representação gráfica seria exibida aqui]")
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginTop(10)
+                .setMarginBottom(10);
+
+        cell.add(chartPlaceholder);
+        cell.add(new Paragraph("Nota: A geração de gráficos requer bibliotecas adicionais").setFontSize(10));
     }
 }

@@ -3,6 +3,7 @@ package br.com.brazilsistem.print_service.interfaces.impl;
 import br.com.brazilsistem.print_service.interfaces.SectionTypeRenderer;
 import br.com.brazilsistem.print_service.model.Section;
 import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.properties.TextAlignment;
 import org.springframework.stereotype.Component;
@@ -20,5 +21,15 @@ public class ImageSectionRenderer implements SectionTypeRenderer {
                 .setMarginBottom(10);
 
         document.add(imagePlaceholder);
+    }
+
+    @Override
+    public void renderSectionContentInCell(Cell cell, Section section) throws IOException {
+        Paragraph imagePlaceholder = new Paragraph("[Imagem seria exibida aqui]")
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginTop(10)
+                .setMarginBottom(10);
+
+        cell.add(imagePlaceholder);
     }
 }

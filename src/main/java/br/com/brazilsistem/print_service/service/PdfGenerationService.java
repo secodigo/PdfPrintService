@@ -5,6 +5,8 @@ import br.com.brazilsistem.print_service.interfaces.HeaderRenderer;
 import br.com.brazilsistem.print_service.interfaces.SectionRenderer;
 import br.com.brazilsistem.print_service.interfaces.impl.DefaultSectionRenderer;
 import br.com.brazilsistem.print_service.model.*;
+import br.com.brazilsistem.print_service.util.PdfStyleUtils;
+import br.com.brazilsistem.print_service.util.TableStyleHelper;
 import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
@@ -55,15 +57,17 @@ public class PdfGenerationService {
      */
     public byte[] generatePdf(ReportData reportData) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PdfWriter writer = configurePdfWriter(baos, reportData.getPdfSettings());
-        PdfDocument pdfDoc = configurePdfDocument(writer, reportData);
 
-        try (Document document = configureDocument(pdfDoc, reportData.getPdfSettings())) {
-            // Verificar se existe um renderizador específico para o tipo de relatório
-           renderDefaultReport(document, reportData);
+        try (PdfWriter writer = configurePdfWriter(baos, reportData.getPdfSettings());
+             PdfDocument pdfDoc = configurePdfDocument(writer, reportData);
+             Document document = configureDocument(pdfDoc, reportData.getPdfSettings())) {
+
+            renderDefaultReport(document, reportData);
         }
 
-        return baos.toByteArray();
+        byte[] result = baos.toByteArray();
+        baos.close(); // Não é estritamente necessário, mas segue boas práticas
+        return result;
     }
 
     /**
@@ -122,7 +126,7 @@ public class PdfGenerationService {
     private void createColumnLayout(Document document, SectionGroup group) throws IOException {
         int numColumns = group.getColumns();
         List<Section> sections = group.getSections();
-        float columnGap = group.getColumnGap() != null ? group.getColumnGap() : 10f;
+        float columnGap = group.getColumnGap() != null ? group.getColumnGap() : TableStyleHelper.DEFAULT_COLUMN_GAP;
 
         // Criar uma tabela para o layout em colunas
         float[] columnWidths = new float[numColumns];
@@ -165,7 +169,7 @@ public class PdfGenerationService {
      * Renderiza o título do grupo.
      */
     private void renderGroupTitle(Document document, String title) throws IOException {
-        PdfFont boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
+        PdfFont boldFont = PdfStyleUtils.getFontBold();
         Paragraph groupTitle = new Paragraph(title)
                 .setFont(boldFont)
                 .setFontSize(16)

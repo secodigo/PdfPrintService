@@ -31,7 +31,7 @@ public class DefaultHeaderRenderer implements HeaderRenderer {
 
     @Override
     public void renderHeader(Document document, ReportData reportData) throws IOException {
-        PdfFont boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
+        PdfFont boldFont = PdfStyleUtils.getFontBold();
 
         // Adiciona o título do relatório
         Paragraph title = new Paragraph(reportData.getTitle())
@@ -66,8 +66,8 @@ public class DefaultHeaderRenderer implements HeaderRenderer {
                 .setMarginBottom(0);
 
         // Obter fontes para negrito e normal
-        PdfFont boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
-        PdfFont normalFont = PdfFontFactory.createFont(StandardFonts.HELVETICA);
+        PdfFont boldFont = PdfStyleUtils.determineFont(true, false);
+        PdfFont normalFont = PdfStyleUtils.determineFont(false, false);
 
         // Prepara a lista de entradas do mapa
         List<Map.Entry<String, String>> entries = new ArrayList<>(headerConfig.getData().entrySet());

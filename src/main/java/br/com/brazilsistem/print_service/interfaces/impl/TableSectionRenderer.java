@@ -37,15 +37,8 @@ public class TableSectionRenderer implements SectionTypeRenderer {
         renderTableToTarget(document, section);
     }
 
-    /**
-     * Renderiza uma tabela dentro de uma célula.
-     * Este método é usado quando a tabela faz parte de um layout em colunas.
-     *
-     * @param cell Célula que conterá a tabela
-     * @param section Seção contendo os dados da tabela
-     * @throws IOException Se ocorrer um erro ao aplicar estilos
-     */
-    public void renderSectionContent(Cell cell, Section section) throws IOException {
+    @Override
+    public void renderSectionContentInCell(Cell cell, Section section) throws IOException {
         renderTableToTarget(cell, section);
     }
 
@@ -336,6 +329,9 @@ public class TableSectionRenderer implements SectionTypeRenderer {
 
         int indentation = nestedSection.getIndentation() != null ? nestedSection.getIndentation() : 20;
 
+        float columnGap = nestedSection.getColumnGap() != null ?
+                nestedSection.getColumnGap() : TableStyleHelper.DEFAULT_COLUMN_GAP;
+
         Cell nestedTableCell = new Cell(1, parentColumnCount)
                 .setBorder(Border.NO_BORDER)
                 .setPaddingLeft(indentation)
@@ -350,7 +346,8 @@ public class TableSectionRenderer implements SectionTypeRenderer {
                 .setWidth(UnitValue.createPercentValue(100))
                 .setBorder(Border.NO_BORDER)
                 .setPaddings(0, 0, 0, 0)
-                .setMargins(0, 0, 0, 0);
+                .setMargins(0, 0, 0, 0)
+                .setHorizontalBorderSpacing(columnGap);;
 
         int rowIndex = 0;
         for (Map<String, Object> nestedRow : nestedData) {

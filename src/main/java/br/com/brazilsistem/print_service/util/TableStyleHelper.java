@@ -13,6 +13,8 @@ import java.util.Map;
  */
 public final class TableStyleHelper {
 
+    public static final float DEFAULT_COLUMN_GAP = 5f;
+
     private TableStyleHelper() {
         // Construtor privado para classe utilitária
     }

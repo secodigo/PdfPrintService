@@ -28,4 +28,5 @@ public class NestedSection {
     private Boolean showHeaders = false; // Se deve mostrar cabeçalhos de coluna
     private Boolean useAlternateRowColor = false; // Alternar cores nas linhas
     private String alternateRowColor = "#F9F9F9"; // Cor alternada para as linhas
+    private Float columnGap = 5f;
 }
