@@ -1,5 +1,6 @@
 package br.com.brazilsistem.print_service.model;
 
+import br.com.brazilsistem.print_service.util.PdfStyleUtils;
 import lombok.Data;
 import java.util.List;
 import java.util.Map;
@@ -29,4 +30,12 @@ public class Section {
     // Novas propriedades para controle de cores alternadas na seção principal
     private Boolean useAlternateRowColor = false; // Se deve usar cores alternadas
     private String alternateRowColor = "#F5F5F5"; // Cor alternativa (cinza claro padrão)
+
+    public Style getTitleStyle() {
+        if (this.titleStyle == null) {
+            return PdfStyleUtils.createDefaultTitleStyle();
+        }
+        return this.titleStyle;
+    }
+
 }

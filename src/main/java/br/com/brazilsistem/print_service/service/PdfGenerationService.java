@@ -8,6 +8,7 @@ import br.com.brazilsistem.print_service.model.*;
 import br.com.brazilsistem.print_service.util.PdfStyleUtils;
 import br.com.brazilsistem.print_service.util.TableStyleHelper;
 import com.itextpdf.io.font.constants.StandardFonts;
+import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.geom.PageSize;
@@ -17,6 +18,7 @@ import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.kernel.pdf.WriterProperties;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.Border;
+import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
@@ -24,6 +26,7 @@ import com.itextpdf.layout.properties.BorderCollapsePropertyValue;
 import com.itextpdf.layout.properties.UnitValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -105,7 +108,7 @@ public class PdfGenerationService {
 
         // Adicionar título do grupo, se existir
         if (group.getTitle() != null && !group.getTitle().isEmpty()) {
-            renderGroupTitle(document, group.getTitle());
+            renderGroupTitle(document, group);
         }
 
         // Verificar se é para aplicar layout em colunas
@@ -172,14 +175,14 @@ public class PdfGenerationService {
     /**
      * Renderiza o título do grupo.
      */
-    private void renderGroupTitle(Document document, String title) throws IOException {
-        PdfFont boldFont = PdfStyleUtils.getFontBold();
-        Paragraph groupTitle = new Paragraph(title)
-                .setFont(boldFont)
-                .setFontSize(8)
-                .setMarginTop(0)
-                .setMarginBottom(0)
-                .setBackgroundColor(PdfStyleUtils.GREEN_CUSTOM);
+    private void renderGroupTitle(Document document, SectionGroup group) throws IOException {
+        Paragraph groupTitle = new Paragraph(group.getTitle());
+
+        if (!ObjectUtils.isEmpty(group.getTitleStyle())) {
+            PdfStyleUtils.applyStyle(groupTitle, group.getTitleStyle());
+        }
+
+        groupTitle.setMarginBottom(1);
         document.add(groupTitle);
     }
 

@@ -7,9 +7,11 @@ import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
+import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.properties.TextAlignment;
 
 import java.io.IOException;
@@ -38,9 +40,29 @@ public final class PdfStyleUtils {
     public static final Float DEFAULT_PADDING = 0f;
     public static final String DEFAULT_BORDER = "NONE";
 
+    public static void applyStyle(Object element, Style style) throws IOException {
+        // Se style for nulo, cria um novo objeto com valores padrão
+        Style effectiveStyle = style;
+        if (effectiveStyle == null) {
+            effectiveStyle = getDefaultColumnStyle();
+        }
+
+        // Determinar o tipo de elemento
+        if (element instanceof Cell cell) {
+            applyCellStyle(cell, effectiveStyle);
+        } else if (element instanceof Paragraph paragraph) {
+            applyParagraphStyle(paragraph, effectiveStyle);
+        } else if (element instanceof Document document) {
+            // Para o Document, criamos um parágrafo, aplicamos o estilo e o adicionamos ao documento
+            Paragraph paragraph = new Paragraph();
+            applyParagraphStyle(paragraph, effectiveStyle);
+            document.add(paragraph);
+        }
+    }
+
     /**
-     * Aplica estilos definidos em uma coluna para uma célula.
-     * Se o parâmetro style for nulo, serão aplicados valores padrão.
+     * Aplica estilos definidos a uma célula.
+     * Este método mantém a compatibilidade com o código existente.
      */
     public static void applyCellStyle(Cell cell, Style style) throws IOException {
         // Se style for nulo, cria um novo objeto com valores padrão
@@ -88,6 +110,60 @@ public final class PdfStyleUtils {
             case "SOLID" -> cell.setBorder(new SolidBorder(0.5f));
             default -> cell.setBorder(Border.NO_BORDER);
         }
+    }
+
+    /**
+     * Aplica estilos definidos a um parágrafo.
+     * Similar ao applyCellStyle, mas específico para Paragraph.
+     */
+    public static void applyParagraphStyle(Paragraph paragraph, Style style) throws IOException {
+        // Se style for nulo, cria um novo objeto com valores padrão
+        Style effectiveStyle = style;
+        if (effectiveStyle == null) {
+            effectiveStyle = getDefaultColumnStyle();
+        }
+
+        // Aplicar alinhamento
+        paragraph.setTextAlignment(getTextAlignment(effectiveStyle.getAlignment()));
+
+        // Tamanho da fonte
+        paragraph.setFontSize(effectiveStyle.getFontSize() != null ?
+                effectiveStyle.getFontSize() : DEFAULT_FONT_SIZE);
+
+        // Cor da fonte
+        if (effectiveStyle.getFontColor() != null) {
+            Color color = parseColor(effectiveStyle.getFontColor());
+            if (color != null) {
+                paragraph.setFontColor(color);
+            }
+        }
+
+        // Cor de fundo
+        if (effectiveStyle.getBackgroundColor() != null) {
+            Color bgColor = parseColor(effectiveStyle.getBackgroundColor());
+            if (bgColor != null) {
+                paragraph.setBackgroundColor(bgColor);
+            }
+        }
+
+        // Fonte e estilo de fonte
+        PdfFont font = determineFont(effectiveStyle.getBold(), effectiveStyle.getItalic());
+        paragraph.setFont(font);
+    }
+
+    /**
+     * Aplica estilos de título a um documento adicionando um parágrafo estilizado.
+     * Útil para aplicar estilos de título diretamente ao documento.
+     *
+     * @param document Documento onde adicionar o título estilizado
+     * @param title Texto do título
+     * @param style Estilo a ser aplicado
+     * @throws IOException Se ocorrer erro ao criar fontes
+     */
+    public static void addStyledTitle(Document document, String title, Style style) throws IOException {
+        Paragraph titleParagraph = new Paragraph(title);
+        applyParagraphStyle(titleParagraph, style);
+        document.add(titleParagraph);
     }
 
     /**
@@ -242,5 +318,17 @@ public final class PdfStyleUtils {
 
     public static PdfFont getFontBold() throws IOException {
         return PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
+    }
+
+    public static Style createDefaultTitleStyle() {
+        Style defaultStyle = new Style();
+        defaultStyle.setAlignment("CENTER");
+        defaultStyle.setBold(true);
+        defaultStyle.setFontSize(8f);
+        defaultStyle.setFontColor("#FFFFFF"); // Texto branco
+        defaultStyle.setBackgroundColor("#088241"); // Verde (mesmo que PdfStyleUtils.GREEN_CUSTOM)
+        defaultStyle.setPadding(5f);
+        defaultStyle.setBorder("NONE");
+        return defaultStyle;
     }
 }

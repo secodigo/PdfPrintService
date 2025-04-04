@@ -12,6 +12,7 @@ import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ObjectUtils;
 
 import java.io.IOException;
 import java.util.Map;
@@ -30,7 +31,7 @@ public class DefaultSectionRenderer implements SectionRenderer {
     public void renderSection(Document document, Section section) throws IOException {
         // Adicionar título da seção se existir
         if (section.getTitle() != null && !section.getTitle().isEmpty()) {
-            renderSectionTitle(document, section.getTitle());
+            renderSectionTitle(document, section);
         }
 
         // Verificar o tipo de seção e delegar para renderizador específico
@@ -53,7 +54,7 @@ public class DefaultSectionRenderer implements SectionRenderer {
     public void renderSectionInCell(Cell cell, Section section) throws IOException {
         // Adicionar título da seção se existir
         if (section.getTitle() != null && !section.getTitle().isEmpty()) {
-            renderSectionTitleInCell(cell, section.getTitle());
+            renderSectionTitleInCell(cell, section);
         }
 
         // Verificar o tipo de seção e delegar para renderizador específico
@@ -67,26 +68,23 @@ public class DefaultSectionRenderer implements SectionRenderer {
         }
     }
 
-    private void renderSectionTitle(Document document, String title) throws IOException {
-        PdfFont boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
-        Paragraph sectionTitle = new Paragraph(title)
-                .setFont(boldFont)
-                .setFontColor(PdfStyleUtils.GREEN_CUSTOM)
-                .setFontSize(14)
-                .setMarginTop(10)
-                .setMultipliedLeading(0.5f);
+    private void renderSectionTitle(Document document, Section section) throws IOException {
+        Paragraph sectionTitle = new Paragraph(section.getTitle());
+
+        if (!ObjectUtils.isEmpty(section.getTitleStyle())) {
+            PdfStyleUtils.applyStyle(sectionTitle, section.getTitleStyle());
+        }
+        sectionTitle.setMarginBottom(1);
         document.add(sectionTitle);
     }
 
-    private void renderSectionTitleInCell(Cell cell, String title) throws IOException {
-        PdfFont boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
-        Paragraph sectionTitle = new Paragraph(title)
-                .setFont(boldFont)
-                .setFontColor(PdfStyleUtils.GREEN_CUSTOM)
-                .setFontSize(14)
-                .setMarginTop(5)
-                .setMarginBottom(5)
-                .setMultipliedLeading(0.5f);
+    private void renderSectionTitleInCell(Cell cell, Section section) throws IOException {
+        Paragraph sectionTitle = new Paragraph(section.getTitle());
+
+        if (!ObjectUtils.isEmpty(section.getTitleStyle())) {
+            PdfStyleUtils.applyStyle(sectionTitle, section.getTitleStyle());
+        }
+
         cell.add(sectionTitle);
     }
 }

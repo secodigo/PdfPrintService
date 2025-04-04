@@ -1,5 +1,6 @@
 package br.com.brazilsistem.print_service.model;
 
+import br.com.brazilsistem.print_service.util.PdfStyleUtils;
 import lombok.Data;
 import java.util.List;
 
@@ -49,4 +50,12 @@ public class SectionGroup {
      * Espaçamento abaixo do grupo, em pontos
      */
     private Float marginBottom = 0f;
+
+    public Style getTitleStyle() {
+        if (this.titleStyle == null) {
+            return PdfStyleUtils.createDefaultTitleStyle();
+        }
+        return this.titleStyle;
+    }
+
 }
