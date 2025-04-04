@@ -15,7 +15,7 @@ public class Section {
 
     private List<Map<String, Object>> data; // Dados para tabelas ou gráficos
 
-    private Map<String, ColumnStyle> columnStyles; // Estilos para cada coluna
+    private Map<String, Style> columnStyles; // Estilos para cada coluna
 
     private String content; // Para seções de texto
 
@@ -23,6 +23,8 @@ public class Section {
 
     // Seções aninhadas
     private List<NestedSection> nestedSections;
+
+    private Style titleStyle;
 
     // Novas propriedades para controle de cores alternadas na seção principal
     private Boolean useAlternateRowColor = false; // Se deve usar cores alternadas

@@ -1,14 +1,13 @@
 package br.com.brazilsistem.print_service.interfaces.impl;
 
 import br.com.brazilsistem.print_service.interfaces.SectionTypeRenderer;
-import br.com.brazilsistem.print_service.model.ColumnStyle;
+import br.com.brazilsistem.print_service.model.Style;
 import br.com.brazilsistem.print_service.model.NestedSection;
 import br.com.brazilsistem.print_service.model.Section;
 import br.com.brazilsistem.print_service.util.ColorUtils;
 import br.com.brazilsistem.print_service.util.PdfStyleUtils;
 import br.com.brazilsistem.print_service.util.TableStyleHelper;
 import com.itextpdf.kernel.colors.Color;
-import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.Border;
@@ -275,16 +274,18 @@ public class TableSectionRenderer implements SectionTypeRenderer {
     /**
      * Cria uma célula de cabeçalho formatada.
      */
-    private Cell createHeaderCell(String content, ColumnStyle style, PdfFont boldFont) throws IOException {
+    private Cell createHeaderCell(String content, Style style, PdfFont boldFont) throws IOException {
         Cell headerCell = new Cell()
-                .add(new Paragraph(content))
-                .setBorder(Border.NO_BORDER)
-                .setFontColor(PdfStyleUtils.COLOR_FONT_TITLE)
-                .setFont(boldFont)
-                .setPaddings(5, 5, 5, 5)
-                .setVerticalAlignment(VerticalAlignment.MIDDLE);
+                .add(new Paragraph(content));
 
         PdfStyleUtils.applyCellStyle(headerCell, style);
+
+        headerCell.setBorder(Border.NO_BORDER)
+                .setFontColor(PdfStyleUtils.COLOR_FONT_TITLE)
+                .setFont(boldFont)
+                .setPaddings(0, 2, 0, 2)
+                .setVerticalAlignment(VerticalAlignment.MIDDLE);
+
         return headerCell;
     }
 
@@ -310,11 +311,11 @@ public class TableSectionRenderer implements SectionTypeRenderer {
      * Método unificado que funciona tanto para dados principais quanto aninhados.
      */
     private void addDataRow(Table table, Map<String, Object> rowData, List<String> columns,
-                            Map<String, ColumnStyle> columnStyles, boolean isNestedRow,
+                            Map<String, Style> columnStyles, boolean isNestedRow,
                             Color backgroundColor) throws IOException {
         for (String columnName : columns) {
             Object value = rowData.getOrDefault(columnName, "");
-            ColumnStyle columnStyle = TableStyleHelper.getColumnStyle(columnStyles, columnName);
+            Style columnStyle = TableStyleHelper.getColumnStyle(columnStyles, columnName);
             String formattedValue = PdfStyleUtils.formatCellValue(value, columnStyle);
 
             Cell cell = new Cell()

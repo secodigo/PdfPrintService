@@ -18,10 +18,12 @@ public class NestedSection {
     private List<String> columns;
 
     // Estilos para as colunas
-    private Map<String, ColumnStyle> columnStyles;
+    private Map<String, Style> columnStyles;
 
     // Título opcional para a seção aninhada
     private String title;
+
+    private Style titleStyle;
 
     // Opções de formatação
     private Integer indentation = 20; // Recuo em pontos para mostrar hierarquia

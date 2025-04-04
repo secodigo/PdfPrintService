@@ -7,7 +7,7 @@ import java.util.Map;
 @Data
 public class HeaderConfig {
     private Map<String, String> data; // Dados para o cabeçalho (pares chave-valor)
-    private Map<String, ColumnStyle> styles; // Estilos para campos específicos
+    private Map<String, Style> styles; // Estilos para campos específicos
     private Integer columns; // Número de colunas para distribuir os campos
     private String labelFormat = "%s: %s"; // Formato para exibir chave e valor juntos (ex: "Chave: Valor")
     private Boolean boldKeys = true; // Se as chaves devem estar em negrito

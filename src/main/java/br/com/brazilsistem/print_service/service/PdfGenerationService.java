@@ -20,6 +20,7 @@ import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.properties.BorderCollapsePropertyValue;
 import com.itextpdf.layout.properties.UnitValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -136,12 +137,15 @@ public class PdfGenerationService {
 
         Table columnsTable = new Table(UnitValue.createPercentArray(columnWidths))
                 .setWidth(UnitValue.createPercentValue(100))
-                .setBorder(Border.NO_BORDER);
+                .setBorder(Border.NO_BORDER)
+                .setBorderCollapse(BorderCollapsePropertyValue.SEPARATE);
 
         // Configurar margens e espaçamento
-        columnsTable.setMarginTop(group.getMarginTop() != null ? group.getMarginTop() : 10f);
-        columnsTable.setMarginBottom(group.getMarginBottom() != null ? group.getMarginBottom() : 10f);
+        columnsTable.setMarginTop(group.getMarginTop() != null ? group.getMarginTop() : 0f);
+        columnsTable.setMarginBottom(group.getMarginBottom() != null ? group.getMarginBottom() : 0f);
         columnsTable.setHorizontalBorderSpacing(columnGap);
+        columnsTable.setMarginLeft(-2);
+        columnsTable.setMarginRight(-2);
 
         // Calcular quantas linhas serão necessárias
         int numRows = (int) Math.ceil((double) sections.size() / numColumns);
@@ -152,7 +156,7 @@ public class PdfGenerationService {
             for (int col = 0; col < numColumns; col++) {
                 if (sectionIndex < sections.size()) {
                     // Criar célula e renderizar seção
-                    Cell cell = new Cell().setBorder(Border.NO_BORDER).setPadding(5);
+                    Cell cell = new Cell().setBorder(Border.NO_BORDER).setPadding(0);
                     defaultSectionRenderer.renderSectionInCell(cell, sections.get(sectionIndex++));
                     columnsTable.addCell(cell);
                 } else {
@@ -172,9 +176,10 @@ public class PdfGenerationService {
         PdfFont boldFont = PdfStyleUtils.getFontBold();
         Paragraph groupTitle = new Paragraph(title)
                 .setFont(boldFont)
-                .setFontSize(16)
-                .setMarginTop(10)
-                .setMarginBottom(5);
+                .setFontSize(8)
+                .setMarginTop(0)
+                .setMarginBottom(0)
+                .setBackgroundColor(PdfStyleUtils.GREEN_CUSTOM);
         document.add(groupTitle);
     }
 

@@ -1,6 +1,6 @@
 package br.com.brazilsistem.print_service.util;
 
-import br.com.brazilsistem.print_service.model.ColumnStyle;
+import br.com.brazilsistem.print_service.model.Style;
 import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.kernel.colors.Color;
 import com.itextpdf.kernel.colors.ColorConstants;
@@ -42,9 +42,9 @@ public final class PdfStyleUtils {
      * Aplica estilos definidos em uma coluna para uma célula.
      * Se o parâmetro style for nulo, serão aplicados valores padrão.
      */
-    public static void applyCellStyle(Cell cell, ColumnStyle style) throws IOException {
+    public static void applyCellStyle(Cell cell, Style style) throws IOException {
         // Se style for nulo, cria um novo objeto com valores padrão
-        ColumnStyle effectiveStyle = style;
+        Style effectiveStyle = style;
         if (effectiveStyle == null) {
             effectiveStyle = getDefaultColumnStyle();
         }
@@ -93,8 +93,8 @@ public final class PdfStyleUtils {
     /**
      * Cria e retorna um objeto ColumnStyle com valores padrão
      */
-    public static ColumnStyle getDefaultColumnStyle() {
-        ColumnStyle defaultStyle = new ColumnStyle();
+    public static Style getDefaultColumnStyle() {
+        Style defaultStyle = new Style();
         defaultStyle.setAlignment(DEFAULT_ALIGNMENT);
         defaultStyle.setBold(DEFAULT_BOLD);
         defaultStyle.setItalic(DEFAULT_ITALIC);
@@ -184,7 +184,7 @@ public final class PdfStyleUtils {
      * Formata o valor da célula com base no formato especificado.
      * Se o ColumnStyle for nulo, retorna a representação de string padrão do valor.
      */
-    public static String formatCellValue(Object value, ColumnStyle style) {
+    public static String formatCellValue(Object value, Style style) {
         if (value == null) {
             return "";
         }

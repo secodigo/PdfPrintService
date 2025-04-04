@@ -1,6 +1,6 @@
 package br.com.brazilsistem.print_service.util;
 
-import br.com.brazilsistem.print_service.model.ColumnStyle;
+import br.com.brazilsistem.print_service.model.Style;
 import br.com.brazilsistem.print_service.model.NestedSection;
 import br.com.brazilsistem.print_service.model.Section;
 
@@ -28,7 +28,7 @@ public final class TableStyleHelper {
     public static float[] calculateColumnWidths(Section section) {
         List<String> columns = section.getColumns();
         float[] widths = new float[columns.size()];
-        Map<String, ColumnStyle> columnStyles = section.getColumnStyles();
+        Map<String, Style> columnStyles = section.getColumnStyles();
 
         return calculateWidths(columns, columnStyles, widths);
     }
@@ -42,7 +42,7 @@ public final class TableStyleHelper {
     public static float[] calculateNestedSectionWidths(NestedSection nestedSection) {
         List<String> columns = nestedSection.getColumns();
         float[] widths = new float[columns.size()];
-        Map<String, ColumnStyle> columnStyles = nestedSection.getColumnStyles();
+        Map<String, Style> columnStyles = nestedSection.getColumnStyles();
 
         return calculateWidths(columns, columnStyles, widths);
     }
@@ -56,7 +56,7 @@ public final class TableStyleHelper {
      * @param widths Array de saída para armazenar as larguras calculadas
      * @return O array de larguras normalizado
      */
-    private static float[] calculateWidths(List<String> columns, Map<String, ColumnStyle> columnStyles, float[] widths) {
+    private static float[] calculateWidths(List<String> columns, Map<String, Style> columnStyles, float[] widths) {
         // Soma total das larguras definidas
         float totalDefinedWidth = 0f;
         int undefinedColumns = 0;
@@ -64,7 +64,7 @@ public final class TableStyleHelper {
         // Primeira passagem: identificar colunas com largura definida
         for (int i = 0; i < columns.size(); i++) {
             String columnName = columns.get(i);
-            ColumnStyle style = getColumnStyle(columnStyles, columnName);
+            Style style = getColumnStyle(columnStyles, columnName);
 
             if (style != null && style.getWidth() != null) {
                 // Converter percentual para valor entre 0 e 1
@@ -117,7 +117,7 @@ public final class TableStyleHelper {
     /**
      * Método auxiliar para obter o estilo de uma coluna, tratando casos nulos.
      */
-    public static ColumnStyle getColumnStyle(Map<String, ColumnStyle> columnStyles, String columnName) {
+    public static Style getColumnStyle(Map<String, Style> columnStyles, String columnName) {
         if (columnStyles == null || !columnStyles.containsKey(columnName)) {
             return null;
         }

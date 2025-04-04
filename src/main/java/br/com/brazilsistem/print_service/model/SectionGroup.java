@@ -26,7 +26,7 @@ public class SectionGroup {
     /**
      * Espaçamento entre colunas, em pontos (1/72 polegada)
      */
-    private Float columnGap = 10f;
+    private Float columnGap = 5f;
 
     /**
      * Identificador do grupo para referência
@@ -37,6 +37,8 @@ public class SectionGroup {
      * Título opcional para o grupo
      */
     private String title;
+
+    private Style titleStyle;
 
     /**
      * Espaçamento acima do grupo, em pontos
