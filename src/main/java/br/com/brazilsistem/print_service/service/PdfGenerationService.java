@@ -31,7 +31,6 @@ import org.springframework.util.ObjectUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Serviço para geração de PDF com suporte a layouts em colunas.

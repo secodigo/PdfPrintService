@@ -1,9 +1,16 @@
 package br.com.brazilsistem.print_service.resource;
 
 import br.com.brazilsistem.print_service.exception.PdfGenerationException;
-import br.com.brazilsistem.print_service.model.ApiResponse;
+import br.com.brazilsistem.print_service.model.ResourceResponse;
 import br.com.brazilsistem.print_service.model.ReportData;
 import br.com.brazilsistem.print_service.service.PdfGenerationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 @RestController
 @RequestMapping("/api/pdf")
 @Validated
+@Tag(name = "Geração de PDF", description = "API para geração de relatórios em PDF")
 public class PdfResource {
 
     private static final Logger logger = LoggerFactory.getLogger(PdfResource.class);
@@ -34,7 +42,30 @@ public class PdfResource {
     }
 
     @PostMapping("/generate")
-    public ResponseEntity<?> generatePdf(@Valid @RequestBody ReportData reportData) {
+    @Operation(
+            summary = "Gerar PDF para download",
+            description = "Gera um documento PDF baseado nos dados de relatório fornecidos e retorna para download."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "PDF gerado com sucesso",
+                    content = @Content(mediaType = "application/pdf")
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Dados de entrada inválidos ou erro na geração do PDF",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ResourceResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ResourceResponse.class))
+            )
+    })
+    public ResponseEntity<?> generatePdf(
+            @Parameter(description = "Dados do relatório para geração do PDF", required = true)
+            @Valid @RequestBody ReportData reportData) {
         try {
             logger.info("Iniciando geração de PDF para relatório do tipo: {}", reportData.getReportType());
 
@@ -54,22 +85,45 @@ public class PdfResource {
             logger.error("Erro no processo de geração do PDF", e);
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error(e.getMessage()));
+                    .body(ResourceResponse.error(e.getMessage()));
         } catch (IOException e) {
             logger.error("Erro ao gerar PDF", e);
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Erro ao gerar PDF: " + e.getMessage()));
+                    .body(ResourceResponse.error("Erro ao gerar PDF: " + e.getMessage()));
         } catch (Exception e) {
             logger.error("Erro inesperado", e);
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Erro inesperado: " + e.getMessage()));
+                    .body(ResourceResponse.error("Erro inesperado: " + e.getMessage()));
         }
     }
 
     @PostMapping("/preview")
-    public ResponseEntity<?> previewPdf(@Valid @RequestBody ReportData reportData) {
+    @Operation(
+            summary = "Visualizar PDF no navegador",
+            description = "Gera um documento PDF baseado nos dados de relatório fornecidos e exibe no navegador."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "PDF gerado com sucesso",
+                    content = @Content(mediaType = "application/pdf")
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Dados de entrada inválidos ou erro na geração do PDF",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ResourceResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ResourceResponse.class))
+            )
+    })
+    public ResponseEntity<?> previewPdf(
+            @Parameter(description = "Dados do relatório para pré-visualização do PDF", required = true)
+            @Valid @RequestBody ReportData reportData) {
         try {
             logger.info("Iniciando geração de PDF para pré-visualização, tipo: {}", reportData.getReportType());
 
@@ -88,22 +142,33 @@ public class PdfResource {
             logger.error("Erro no processo de geração do PDF para pré-visualização", e);
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error(e.getMessage()));
+                    .body(ResourceResponse.error(e.getMessage()));
         } catch (IOException e) {
             logger.error("Erro ao gerar PDF para pré-visualização", e);
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Erro ao gerar PDF para pré-visualização: " + e.getMessage()));
+                    .body(ResourceResponse.error("Erro ao gerar PDF para pré-visualização: " + e.getMessage()));
         } catch (Exception e) {
             logger.error("Erro inesperado", e);
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Erro inesperado: " + e.getMessage()));
+                    .body(ResourceResponse.error("Erro inesperado: " + e.getMessage()));
         }
     }
 
     @GetMapping("/health")
-    public ResponseEntity<ApiResponse> healthCheck() {
-        return ResponseEntity.ok(ApiResponse.success("Serviço de PDF está funcionando corretamente"));
+    @Operation(
+            summary = "Verificar status do serviço",
+            description = "Endpoint para verificar se o serviço de geração de PDF está funcionando corretamente."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Serviço funcionando corretamente",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ResourceResponse.class))
+            )
+    })
+    public ResponseEntity<ResourceResponse> healthCheck() {
+        return ResponseEntity.ok(ResourceResponse.success("Serviço de PDF está funcionando corretamente"));
     }
 }
