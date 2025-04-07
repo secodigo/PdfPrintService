@@ -92,10 +92,9 @@ public class PdfGenerationService {
             }
         }
 
-        // Adiciona o rodapé, se fornecido
-        if (reportData.getFooterData() != null && !reportData.getFooterData().isEmpty()) {
-            footerRenderer.renderFooter(document, reportData.getFooterData());
-        }
+
+        footerRenderer.renderFooter(document, reportData.getFooterData());
+
     }
 
     /**

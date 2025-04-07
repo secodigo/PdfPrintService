@@ -12,6 +12,8 @@ import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.properties.OverflowPropertyValue;
+import com.itextpdf.layout.properties.Property;
 import com.itextpdf.layout.properties.TextAlignment;
 
 import java.io.IOException;
@@ -149,6 +151,7 @@ public final class PdfStyleUtils {
         // Fonte e estilo de fonte
         PdfFont font = determineFont(effectiveStyle.getBold(), effectiveStyle.getItalic());
         paragraph.setFont(font);
+        paragraph.setProperty(Property.NO_SOFT_WRAP_INLINE, true);
     }
 
     /**

@@ -26,10 +26,14 @@ import java.util.Map;
 /**
  * Renderizador de seções de tabela em documentos PDF.
  * Responsável por renderizar tabelas, incluindo cabeçalhos e seções aninhadas.
- * Esta versão inclui otimizações para um processamento mais eficiente dos dados.
+ * Esta versão inclui suporte para quebra automática de linhas quando as colunas excedem 100%.
  */
 @Component("table")
 public class TableSectionRenderer implements SectionTypeRenderer {
+
+    // Constantes para espaçamento
+    private static final float HORIZONTAL_CELL_PADDING = 2f;   // Espaçamento lateral (esquerda e direita)
+    private static final float VERTICAL_CELL_PADDING = 0f;      // Mantém o padrão para topo e base
 
     @Override
     public void renderSectionContent(Document document, Section section) throws IOException {
@@ -45,14 +49,14 @@ public class TableSectionRenderer implements SectionTypeRenderer {
      * Classe auxiliar para armazenar o contexto de renderização da tabela
      */
     private static class TableRenderingContext {
-        float[] columnWidths;
         Table mainTable;
         PdfFont headerFont;
         boolean useAlternateRowColor;
         Color alternateRowColor;
         List<NestedSection> nestedSections;
         List<NestedHeaderInfo> nestedHeadersInfo;
-        int columnsSpan;
+        int totalColumns; // Total de colunas para seções aninhadas
+        List<String[]> columnRows; // Colunas organizadas em linhas
     }
 
     /**
@@ -80,61 +84,107 @@ public class TableSectionRenderer implements SectionTypeRenderer {
 
         // Preparar todos os dados necessários antes da renderização
         TableRenderingContext context = new TableRenderingContext();
-        context.columnWidths = TableStyleHelper.calculateColumnWidths(section);
-        context.mainTable = createBaseTable(context.columnWidths);
+
+        // Organizar colunas em linhas quando necessário
+        context.columnRows = TableStyleHelper.organizeColumnsInRows(section.getColumns(), section.getColumnStyles());
+        context.totalColumns = getMaxColumnsPerRow(context.columnRows);
+
+        // Criamos a tabela principal com base no número total de colunas
+        float[] columnWidths = new float[context.totalColumns];
+        for (int i = 0; i < context.totalColumns; i++) {
+            columnWidths[i] = 1f; // Todas as colunas têm peso igual
+        }
+        context.mainTable = createBaseTable(columnWidths);
+
         context.headerFont = PdfStyleUtils.getFontBold();
         context.useAlternateRowColor = Boolean.TRUE.equals(section.getUseAlternateRowColor());
         context.alternateRowColor = getAlternateRowColor(section);
         context.nestedSections = section.getNestedSections();
-        context.columnsSpan = section.getColumns().size();
 
-        // Preparar e adicionar cabeçalhos ao contexto
-        prepareHeaders(context, section);
+        // Adicionar cabeçalhos para cada linha de colunas
+        renderMultiRowHeaders(context, section);
 
         // Processar dados e renderizar em uma única passagem
-        renderDataWithNestedSections(context, section);
+        renderDataWithMultipleRows(context, section);
 
         // Adicionar tabela ao alvo apropriado
         addTableToTarget(target, context.mainTable);
     }
 
     /**
-     * Adiciona uma mensagem de erro ao alvo (Document ou Cell)
+     * Determina o número máximo de colunas em todas as linhas
      */
-    private void addErrorMessageToTarget(Object target, String errorMessage) {
-        Paragraph errorMsg = new Paragraph(errorMessage);
-        if (target instanceof Document) {
-            ((Document) target).add(errorMsg);
-        } else if (target instanceof Cell) {
-            ((Cell) target).add(errorMsg);
+    private int getMaxColumnsPerRow(List<String[]> columnRows) {
+        int max = 0;
+        for (String[] row : columnRows) {
+            max = Math.max(max, row.length);
         }
+        return max;
     }
 
     /**
-     * Adiciona a tabela ao alvo apropriado (Document ou Cell)
+     * Renderiza cabeçalhos para múltiplas linhas de colunas
      */
-    private void addTableToTarget(Object target, Table table) {
-        if (target instanceof Document) {
-            ((Document) target).add(table);
-        } else if (target instanceof Cell) {
-            ((Cell) target).add(table);
-        }
-    }
+    private void renderMultiRowHeaders(TableRenderingContext context, Section section) throws IOException {
+        int rowIndex = 0;
+        for (String[] rowColumns : context.columnRows) {
+            // Para cada linha de colunas, criar uma nova subtabela com as larguras corretas
+            if (rowColumns.length > 0) {
+                // Calcular larguras específicas para esta linha de colunas
+                float[] rowWidths = new float[rowColumns.length];
+                float totalWidth = 0;
 
-    /**
-     * Prepara e adiciona todos os cabeçalhos necessários à tabela
-     */
-    private void prepareHeaders(TableRenderingContext context, Section section) throws IOException {
-        // Adicionar cabeçalho principal
-        for (String columnName : section.getColumns()) {
-            Cell headerCell = createHeaderCell(columnName,
-                    TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnName),
-                    context.headerFont);
-            headerCell.setBackgroundColor(ColorUtils.getHeaderColorForLevel(0));
-            context.mainTable.addHeaderCell(headerCell);
+                // Primeira passagem: obter as larguras originais definidas no JSON
+                for (int i = 0; i < rowColumns.length; i++) {
+                    String columnName = rowColumns[i];
+                    Style style = TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnName);
+
+                    if (style != null && style.getWidth() != null) {
+                        // Usar a largura exata definida no JSON
+                        rowWidths[i] = style.getWidth();
+                    } else {
+                        // Para colunas sem largura definida, usar um padrão
+                        rowWidths[i] = 100f / rowColumns.length;
+                    }
+                    totalWidth += rowWidths[i];
+                }
+
+                // Criar uma célula para conter toda a linha de colunas
+                Cell rowContainer = new Cell(1, context.totalColumns)
+                        .setBorder(Border.NO_BORDER)
+                        .setPadding(0);
+
+                // Criar uma subtabela que respeita as larguras definidas
+                Table rowTable = new Table(UnitValue.createPercentArray(rowWidths))
+                        .setWidth(UnitValue.createPercentValue(100))
+                        .setBorder(Border.NO_BORDER)
+                        .setPaddings(0, 0, 0, 0);
+
+                // Adicionar cabeçalhos para cada coluna desta linha
+                for (int i = 0; i < rowColumns.length; i++) {
+                    String columnName = rowColumns[i];
+                    Cell headerCell = createHeaderCell(columnName,
+                            TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnName),
+                            context.headerFont);
+                    headerCell.setBackgroundColor(ColorUtils.getHeaderColorForLevel(0));
+
+                    // Aplicar apenas espaçamento lateral
+                    headerCell.setPaddingLeft(HORIZONTAL_CELL_PADDING);
+                    headerCell.setPaddingRight(HORIZONTAL_CELL_PADDING);
+
+                    rowTable.addHeaderCell(headerCell);
+                }
+
+                // Adicionar a subtabela à célula contêiner
+                rowContainer.add(rowTable);
+
+                // Adicionar a célula contêiner à tabela principal
+                context.mainTable.addHeaderCell(rowContainer);
+            }
+            rowIndex++;
         }
 
-        // Preparar informações para cabeçalhos de seções aninhadas
+        // Preparar cabeçalhos de seções aninhadas, se houver
         if (context.nestedSections != null && !context.nestedSections.isEmpty()) {
             context.nestedHeadersInfo = new ArrayList<>();
 
@@ -157,67 +207,9 @@ public class TableSectionRenderer implements SectionTypeRenderer {
     }
 
     /**
-     * Adiciona os cabeçalhos aninhados à tabela principal
+     * Renderiza dados para múltiplas linhas de colunas
      */
-    private void addNestedHeadersToTable(TableRenderingContext context) throws IOException {
-        for (NestedHeaderInfo headerInfo : context.nestedHeadersInfo) {
-            NestedSection nestedSection = headerInfo.section;
-            int indentation = nestedSection.getIndentation() != null ? nestedSection.getIndentation() : 20;
-
-            // Criar célula contêiner para os cabeçalhos aninhados
-            Cell nestedHeadersContainer = new Cell(1, context.columnsSpan)
-                    .setBorder(Border.NO_BORDER)
-                    .setPaddings(0, 0, 0, 0)
-                    .setMargin(0)
-                    .setPaddingLeft(indentation);
-
-            // Adicionar título da seção aninhada, se existir
-            if (nestedSection.getTitle() != null && !nestedSection.getTitle().isEmpty()) {
-                Table titleTable = new Table(1)
-                        .setWidth(UnitValue.createPercentValue(100))
-                        .setBorder(Border.NO_BORDER)
-                        .setPaddings(0, 0, 0, 0)
-                        .setMargins(0, 0, 0, 0);
-
-                Cell titleCell = new Cell()
-                        .add(new Paragraph(nestedSection.getTitle()))
-                        .setFont(context.headerFont)
-                        .setFontSize(14)
-                        .setBorder(Border.NO_BORDER)
-                        .setBackgroundColor(headerInfo.headerColor)
-                        .setFontColor(PdfStyleUtils.COLOR_FONT_TITLE)
-                        .setPaddings(5, 5, 5, 5);
-
-                titleTable.addCell(titleCell);
-                nestedHeadersContainer.add(titleTable);
-            }
-
-            // Adicionar cabeçalhos de colunas da seção aninhada
-            float[] nestedWidths = TableStyleHelper.calculateNestedSectionWidths(nestedSection);
-
-            Table nestedHeadersTable = new Table(UnitValue.createPercentArray(nestedWidths))
-                    .setWidth(UnitValue.createPercentValue(100))
-                    .setBorder(Border.NO_BORDER)
-                    .setPaddings(0, 0, 0, 0)
-                    .setMargins(0, 0, 0, 0);
-
-            for (String columnName : nestedSection.getColumns()) {
-                Cell headerCell = createHeaderCell(columnName,
-                        TableStyleHelper.getColumnStyle(nestedSection.getColumnStyles(), columnName),
-                        context.headerFont);
-                headerCell.setBackgroundColor(headerInfo.headerColor);
-                nestedHeadersTable.addCell(headerCell);
-            }
-
-            nestedHeadersContainer.add(nestedHeadersTable);
-            context.mainTable.addHeaderCell(nestedHeadersContainer);
-        }
-    }
-
-    /**
-     * Renderiza os dados e as seções aninhadas em uma única passagem
-     */
-    private void renderDataWithNestedSections(TableRenderingContext context, Section section) throws IOException {
+    private void renderDataWithMultipleRows(TableRenderingContext context, Section section) throws IOException {
         int rowIndex = 0;
         for (Map<String, Object> rowData : section.getData()) {
             // Determinar cor para linha atual (alternando se necessário)
@@ -226,11 +218,80 @@ public class TableSectionRenderer implements SectionTypeRenderer {
                 rowColor = context.alternateRowColor;
             }
 
-            // Adicionar linha de dados principal
-            addDataRow(context.mainTable, rowData, section.getColumns(),
-                    section.getColumnStyles(), false, rowColor);
+            // Para cada grupo de colunas (linha na definição de colunas)
+            for (String[] rowColumns : context.columnRows) {
+                if (rowColumns.length > 0) {
+                    // Calcular larguras específicas para esta linha de colunas
+                    float[] rowWidths = new float[rowColumns.length];
+                    float totalWidth = 0;
 
-            // Processar seções aninhadas para esta linha na mesma iteração
+                    // Primeira passagem: obter as larguras originais definidas no JSON
+                    for (int i = 0; i < rowColumns.length; i++) {
+                        String columnName = rowColumns[i];
+                        Style style = TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnName);
+
+                        if (style != null && style.getWidth() != null) {
+                            // Usar a largura exata definida no JSON
+                            rowWidths[i] = style.getWidth();
+                        } else {
+                            // Para colunas sem largura definida, usar um padrão
+                            rowWidths[i] = 100f / rowColumns.length;
+                        }
+                        totalWidth += rowWidths[i];
+                    }
+
+                    // Criar uma célula para conter toda a linha de colunas
+                    Cell rowContainer = new Cell(1, context.totalColumns)
+                            .setBorder(Border.NO_BORDER)
+                            .setPadding(0);
+
+                    if (rowColor != null) {
+                        rowContainer.setBackgroundColor(rowColor);
+                    }
+
+                    // Criar uma subtabela que respeita as larguras definidas
+                    Table rowTable = new Table(UnitValue.createPercentArray(rowWidths))
+                            .setWidth(UnitValue.createPercentValue(100))
+                            .setBorder(Border.NO_BORDER)
+                            .setPaddings(0, 0, 0, 0);
+
+                    // Adicionar células de dados para cada coluna desta linha
+                    for (int i = 0; i < rowColumns.length; i++) {
+                        String columnName = rowColumns[i];
+                        Object value = rowData.getOrDefault(columnName, "");
+                        Style columnStyle = TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnName);
+                        String formattedValue = PdfStyleUtils.formatCellValue(value, columnStyle);
+
+                        Cell dataCell = new Cell()
+                                .add(new Paragraph(formattedValue))
+                                .setBorder(Border.NO_BORDER);
+
+                        // Aplicar cor de fundo se fornecida
+                        if (rowColor != null) {
+                            dataCell.setBackgroundColor(rowColor);
+                        }
+
+                        // Aplicar estilos de célula
+                        PdfStyleUtils.applyCellStyle(dataCell, columnStyle);
+
+                        // Aplicar apenas espaçamento lateral, mantendo o vertical original
+                        dataCell.setPaddingLeft(HORIZONTAL_CELL_PADDING);
+                        dataCell.setPaddingRight(HORIZONTAL_CELL_PADDING);
+                        dataCell.setPaddingTop(VERTICAL_CELL_PADDING);
+                        dataCell.setPaddingBottom(VERTICAL_CELL_PADDING);
+
+                        rowTable.addCell(dataCell);
+                    }
+
+                    // Adicionar a subtabela à célula contêiner
+                    rowContainer.add(rowTable);
+
+                    // Adicionar a célula contêiner à tabela principal
+                    context.mainTable.addCell(rowContainer);
+                }
+            }
+
+            // Processar seções aninhadas para esta linha
             if (context.nestedSections != null && !context.nestedSections.isEmpty()) {
                 for (NestedSection nestedSection : context.nestedSections) {
                     if (rowData.containsKey(nestedSection.getSourceField()) &&
@@ -242,7 +303,7 @@ public class TableSectionRenderer implements SectionTypeRenderer {
 
                         if (nestedData != null && !nestedData.isEmpty()) {
                             renderNestedSectionData(context.mainTable, nestedSection,
-                                    nestedData, context.columnsSpan);
+                                    nestedData, context.totalColumns);
                         }
                     }
                 }
@@ -272,6 +333,29 @@ public class TableSectionRenderer implements SectionTypeRenderer {
     }
 
     /**
+     * Adiciona uma mensagem de erro ao alvo (Document ou Cell)
+     */
+    private void addErrorMessageToTarget(Object target, String errorMessage) {
+        Paragraph errorMsg = new Paragraph(errorMessage);
+        if (target instanceof Document) {
+            ((Document) target).add(errorMsg);
+        } else if (target instanceof Cell) {
+            ((Cell) target).add(errorMsg);
+        }
+    }
+
+    /**
+     * Adiciona a tabela ao alvo apropriado (Document ou Cell)
+     */
+    private void addTableToTarget(Object target, Table table) {
+        if (target instanceof Document) {
+            ((Document) target).add(table);
+        } else if (target instanceof Cell) {
+            ((Cell) target).add(table);
+        }
+    }
+
+    /**
      * Cria uma célula de cabeçalho formatada.
      */
     private Cell createHeaderCell(String content, Style style, PdfFont boldFont) throws IOException {
@@ -283,7 +367,8 @@ public class TableSectionRenderer implements SectionTypeRenderer {
         headerCell.setBorder(Border.NO_BORDER)
                 .setFontColor(PdfStyleUtils.COLOR_FONT_TITLE)
                 .setFont(boldFont)
-                .setPaddings(0, 2, 0, 2)
+                .setPaddingLeft(HORIZONTAL_CELL_PADDING)
+                .setPaddingRight(HORIZONTAL_CELL_PADDING)
                 .setVerticalAlignment(VerticalAlignment.MIDDLE);
 
         return headerCell;
@@ -307,36 +392,61 @@ public class TableSectionRenderer implements SectionTypeRenderer {
     }
 
     /**
-     * Adiciona uma linha de dados à tabela.
-     * Método unificado que funciona tanto para dados principais quanto aninhados.
+     * Adiciona os cabeçalhos aninhados à tabela principal
      */
-    private void addDataRow(Table table, Map<String, Object> rowData, List<String> columns,
-                            Map<String, Style> columnStyles, boolean isNestedRow,
-                            Color backgroundColor) throws IOException {
-        for (String columnName : columns) {
-            Object value = rowData.getOrDefault(columnName, "");
-            Style columnStyle = TableStyleHelper.getColumnStyle(columnStyles, columnName);
-            String formattedValue = PdfStyleUtils.formatCellValue(value, columnStyle);
+    private void addNestedHeadersToTable(TableRenderingContext context) throws IOException {
+        for (NestedHeaderInfo headerInfo : context.nestedHeadersInfo) {
+            NestedSection nestedSection = headerInfo.section;
+            int indentation = nestedSection.getIndentation() != null ? nestedSection.getIndentation() : 20;
 
-            Cell cell = new Cell()
-                    .add(new Paragraph(formattedValue))
-                    .setBorder(Border.NO_BORDER);
+            // Criar célula contêiner para os cabeçalhos aninhados (usando construtor com colspan)
+            Cell nestedHeadersContainer = new Cell(1, context.totalColumns)
+                    .setBorder(Border.NO_BORDER)
+                    .setPaddings(0, 0, 0, 0)
+                    .setMargin(0)
+                    .setPaddingLeft(indentation);
 
-            // Aplicar cor de fundo se fornecida
-            if (backgroundColor != null) {
-                cell.setBackgroundColor(backgroundColor);
+            // Adicionar título da seção aninhada, se existir
+            if (nestedSection.getTitle() != null && !nestedSection.getTitle().isEmpty()) {
+                Table titleTable = new Table(1)
+                        .setWidth(UnitValue.createPercentValue(100))
+                        .setBorder(Border.NO_BORDER)
+                        .setPaddings(0, 0, 0, 0)
+                        .setMargins(0, 0, 0, 0);
+
+                Cell titleCell = new Cell()
+                        .add(new Paragraph(nestedSection.getTitle()))
+                        .setFont(context.headerFont)
+                        .setFontSize(14)
+                        .setBorder(Border.NO_BORDER)
+                        .setBackgroundColor(headerInfo.headerColor)
+                        .setFontColor(PdfStyleUtils.COLOR_FONT_TITLE)
+                        .setPaddingLeft(HORIZONTAL_CELL_PADDING)
+                        .setPaddingRight(HORIZONTAL_CELL_PADDING);
+
+                titleTable.addCell(titleCell);
+                nestedHeadersContainer.add(titleTable);
             }
 
-            // Aplica estilos de célula
-            PdfStyleUtils.applyCellStyle(cell, columnStyle);
+            // Adicionar cabeçalhos de colunas da seção aninhada
+            float[] nestedWidths = TableStyleHelper.calculateNestedSectionWidths(nestedSection);
 
-            // Se for uma linha aninhada, pode aplicar estilos adicionais
-            if (isNestedRow) {
-                float currentPadding = cell.getPaddingLeft().getValue();
-                cell.setPaddingLeft(currentPadding + 5); // Adiciona um recuo extra
+            Table nestedHeadersTable = new Table(UnitValue.createPercentArray(nestedWidths))
+                    .setWidth(UnitValue.createPercentValue(100))
+                    .setBorder(Border.NO_BORDER)
+                    .setPaddings(0, 0, 0, 0)
+                    .setMargins(0, 0, 0, 0);
+
+            for (String columnName : nestedSection.getColumns()) {
+                Cell headerCell = createHeaderCell(columnName,
+                        TableStyleHelper.getColumnStyle(nestedSection.getColumnStyles(), columnName),
+                        context.headerFont);
+                headerCell.setBackgroundColor(headerInfo.headerColor);
+                nestedHeadersTable.addCell(headerCell);
             }
 
-            table.addCell(cell);
+            nestedHeadersContainer.add(nestedHeadersTable);
+            context.mainTable.addHeaderCell(nestedHeadersContainer);
         }
     }
 
@@ -355,6 +465,7 @@ public class TableSectionRenderer implements SectionTypeRenderer {
         float columnGap = nestedSection.getColumnGap() != null ?
                 nestedSection.getColumnGap() : TableStyleHelper.DEFAULT_COLUMN_GAP;
 
+        // Usar construtor com colspan
         Cell nestedTableCell = new Cell(1, parentColumnCount)
                 .setBorder(Border.NO_BORDER)
                 .setPaddingLeft(indentation)
@@ -391,9 +502,35 @@ public class TableSectionRenderer implements SectionTypeRenderer {
                 rowColor = alternateRowColor;
             }
 
-            // Usar o mesmo método de addDataRow com flag de linha aninhada
-            addDataRow(nestedTable, nestedRow, nestedSection.getColumns(),
-                    nestedSection.getColumnStyles(), true, rowColor);
+            // Adicionar cada célula de dados independentemente
+            for (String columnName : nestedSection.getColumns()) {
+                Object value = nestedRow.getOrDefault(columnName, "");
+                Style columnStyle = TableStyleHelper.getColumnStyle(nestedSection.getColumnStyles(), columnName);
+                String formattedValue = PdfStyleUtils.formatCellValue(value, columnStyle);
+
+                Cell cell = new Cell()
+                        .add(new Paragraph(formattedValue))
+                        .setBorder(Border.NO_BORDER);
+
+                if (rowColor != null) {
+                    cell.setBackgroundColor(rowColor);
+                }
+
+                // Aplica estilos de célula
+                PdfStyleUtils.applyCellStyle(cell, columnStyle);
+
+                // Adicionar recuo extra para células aninhadas
+                float currentPadding = cell.getPaddingLeft().getValue();
+                cell.setPaddingLeft(currentPadding);
+
+                // Aplicar espaçamento lateral consistente
+                cell.setPaddingLeft(HORIZONTAL_CELL_PADDING);
+                cell.setPaddingRight(HORIZONTAL_CELL_PADDING);
+                cell.setPaddingTop(VERTICAL_CELL_PADDING);
+                cell.setPaddingBottom(VERTICAL_CELL_PADDING);
+
+                nestedTable.addCell(cell);
+            }
 
             rowIndex++;
         }

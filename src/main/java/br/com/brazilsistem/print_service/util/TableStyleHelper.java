@@ -4,6 +4,7 @@ import br.com.brazilsistem.print_service.model.Style;
 import br.com.brazilsistem.print_service.model.NestedSection;
 import br.com.brazilsistem.print_service.model.Section;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +15,8 @@ import java.util.Map;
 public final class TableStyleHelper {
 
     public static final float DEFAULT_COLUMN_GAP = 5f;
+    // Constante para o limite máximo de largura por linha (100%)
+    public static final float MAX_ROW_WIDTH = 1.0f;
 
     private TableStyleHelper() {
         // Construtor privado para classe utilitária
@@ -89,8 +92,51 @@ public final class TableStyleHelper {
             }
         }
 
-        // Normalização para soma 1
         return normalizeWidths(widths);
+    }
+
+    /**
+     * Organiza as colunas em múltiplas linhas quando o total excede 100%
+     * Retorna uma lista de arrays, onde cada array representa uma linha de colunas
+     *
+     * @param columns Lista de nomes de colunas
+     * @param columnStyles Mapa de estilos de colunas
+     * @return Lista de arrays representando linhas de colunas
+     */
+    public static List<String[]> organizeColumnsInRows(List<String> columns, Map<String, Style> columnStyles) {
+        List<String[]> rows = new ArrayList<>();
+        List<String> currentRow = new ArrayList<>();
+        float currentRowWidth = 0f;
+
+        for (String columnName : columns) {
+            Style style = getColumnStyle(columnStyles, columnName);
+            float columnWidth = (style != null && style.getWidth() != null) ?
+                    (style.getWidth() / 100f) :
+                    (1f / columns.size()); // Largura padrão se não definida
+
+            // Se adicionar esta coluna exceder a largura máxima (100%), começamos uma nova linha
+            if (currentRowWidth + columnWidth > MAX_ROW_WIDTH && !currentRow.isEmpty()) {
+                rows.add(currentRow.toArray(new String[0]));
+                currentRow = new ArrayList<>();
+                currentRowWidth = 0f;
+            }
+
+            // Adicionamos a coluna à linha atual
+            currentRow.add(columnName);
+            currentRowWidth += columnWidth;
+        }
+
+        // Adiciona a última linha se não estiver vazia
+        if (!currentRow.isEmpty()) {
+            rows.add(currentRow.toArray(new String[0]));
+        }
+
+        // Se nenhuma linha foi criada (o que seria estranho), adicione todas as colunas numa única linha
+        if (rows.isEmpty() && !columns.isEmpty()) {
+            rows.add(columns.toArray(new String[0]));
+        }
+
+        return rows;
     }
 
     /**
@@ -99,7 +145,7 @@ public final class TableStyleHelper {
      * @param widths Array de larguras a ser normalizado
      * @return Array normalizado
      */
-    private static float[] normalizeWidths(float[] widths) {
+    public static float[] normalizeWidths(float[] widths) {
         float sum = 0;
         for (float width : widths) {
             sum += width;
