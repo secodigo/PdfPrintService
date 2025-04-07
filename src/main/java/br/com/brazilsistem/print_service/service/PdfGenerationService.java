@@ -62,6 +62,7 @@ public class PdfGenerationService {
     public byte[] generatePdf(ReportData reportData) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
+        reportData.getPdfSettings().setMarginBottom(20f);
         try (PdfWriter writer = configurePdfWriter(baos, reportData.getPdfSettings());
              PdfDocument pdfDoc = configurePdfDocument(writer, reportData);
              Document document = configureDocument(pdfDoc, reportData.getPdfSettings())) {
