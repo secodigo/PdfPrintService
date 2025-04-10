@@ -27,7 +27,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 @RestController
-@RequestMapping("/api/pdf")
+@RequestMapping("/pdf")
 @Validated
 @Tag(name = "Geração de PDF", description = "API para geração de relatórios em PDF")
 public class PdfResource {
