@@ -2,6 +2,7 @@ package br.com.brazilsistem.print_service.model;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -17,9 +18,10 @@ public class NestedSection {
     @Schema(description = "Campo na seção principal que contém os dados aninhados", example = "itens", required = true)
     private String sourceField;
 
-    // Colunas a serem exibidas na seção aninhada
-    @Schema(description = "Colunas a serem exibidas na seção aninhada", example = "[\"Código\", \"Produto\", \"Quantidade\", \"Valor\"]")
-    private List<String> columns;
+    // Novo formato de colunas como mapa de chave-valor
+    @Schema(description = "Mapa de colunas onde a chave é o ID do campo e o valor é o título de exibição",
+            example = "{\"codigo\": \"Código\", \"produto\": \"Produto\", \"quantidade\": \"Quantidade\", \"valor\": \"Valor\"}")
+    private Map<String, String> columns;
 
     // Estilos para as colunas
     @Schema(description = "Estilos para as colunas da seção aninhada")
@@ -47,4 +49,41 @@ public class NestedSection {
 
     @Schema(description = "Espaçamento entre colunas em pontos", example = "5.0")
     private Float columnGap = 5f;
+
+    /**
+     * Retorna a lista de identificadores de colunas (chaves do mapa).
+     *
+     * @return Lista de identificadores de colunas
+     */
+    public List<String> getColumnIds() {
+        if (columns == null) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(columns.keySet());
+    }
+
+    /**
+     * Retorna a lista de títulos de colunas para exibição (valores do mapa).
+     *
+     * @return Lista de títulos de colunas para exibição
+     */
+    public List<String> getColumnTitles() {
+        if (columns == null) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(columns.values());
+    }
+
+    /**
+     * Obtém o título de exibição para uma coluna específica
+     *
+     * @param columnId ID da coluna
+     * @return Título de exibição ou o próprio ID se não encontrar mapeamento
+     */
+    public String getColumnTitle(String columnId) {
+        if (columns != null && columns.containsKey(columnId)) {
+            return columns.get(columnId);
+        }
+        return columnId; // Retorna o próprio ID se não encontrar mapeamento
+    }
 }

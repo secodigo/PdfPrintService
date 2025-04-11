@@ -11,6 +11,7 @@ import java.util.Map;
 /**
  * Classe utilitária para manipulação de estilos e cálculos relacionados a tabelas.
  * Separa a lógica de cálculo de larguras e outros aspectos de estilo da classe de renderização.
+ * Atualizada para trabalhar com o novo formato de colunas (mapa chave-valor).
  */
 public final class TableStyleHelper {
 
@@ -29,11 +30,11 @@ public final class TableStyleHelper {
      * @return Um array de larguras normalizadas (soma 1)
      */
     public static float[] calculateColumnWidths(Section section) {
-        List<String> columns = section.getColumns();
-        float[] widths = new float[columns.size()];
+        List<String> columnIds = section.getColumnIds();
+        float[] widths = new float[columnIds.size()];
         Map<String, Style> columnStyles = section.getColumnStyles();
 
-        return calculateWidths(columns, columnStyles, widths);
+        return calculateWidths(columnIds, columnStyles, widths);
     }
 
     /**
@@ -43,31 +44,31 @@ public final class TableStyleHelper {
      * @return Um array de larguras normalizadas (soma 1)
      */
     public static float[] calculateNestedSectionWidths(NestedSection nestedSection) {
-        List<String> columns = nestedSection.getColumns();
-        float[] widths = new float[columns.size()];
+        List<String> columnIds = nestedSection.getColumnIds();
+        float[] widths = new float[columnIds.size()];
         Map<String, Style> columnStyles = nestedSection.getColumnStyles();
 
-        return calculateWidths(columns, columnStyles, widths);
+        return calculateWidths(columnIds, columnStyles, widths);
     }
 
     /**
      * Método genérico para calcular larguras de colunas.
      * Este método é usado tanto para seções principais quanto para seções aninhadas.
      *
-     * @param columns Lista de nomes de colunas
+     * @param columnIds    Lista de identificadores de colunas
      * @param columnStyles Mapa de estilos de colunas
-     * @param widths Array de saída para armazenar as larguras calculadas
+     * @param widths       Array de saída para armazenar as larguras calculadas
      * @return O array de larguras normalizado
      */
-    private static float[] calculateWidths(List<String> columns, Map<String, Style> columnStyles, float[] widths) {
+    private static float[] calculateWidths(List<String> columnIds, Map<String, Style> columnStyles, float[] widths) {
         // Soma total das larguras definidas
         float totalDefinedWidth = 0f;
         int undefinedColumns = 0;
 
         // Primeira passagem: identificar colunas com largura definida
-        for (int i = 0; i < columns.size(); i++) {
-            String columnName = columns.get(i);
-            Style style = getColumnStyle(columnStyles, columnName);
+        for (int i = 0; i < columnIds.size(); i++) {
+            String columnId = columnIds.get(i);
+            Style style = getColumnStyle(columnStyles, columnId);
 
             if (style != null && style.getWidth() != null) {
                 // Converter percentual para valor entre 0 e 1
@@ -99,20 +100,20 @@ public final class TableStyleHelper {
      * Organiza as colunas em múltiplas linhas quando o total excede 100%
      * Retorna uma lista de arrays, onde cada array representa uma linha de colunas
      *
-     * @param columns Lista de nomes de colunas
+     * @param columnIds    Lista de identificadores de colunas
      * @param columnStyles Mapa de estilos de colunas
      * @return Lista de arrays representando linhas de colunas
      */
-    public static List<String[]> organizeColumnsInRows(List<String> columns, Map<String, Style> columnStyles) {
+    public static List<String[]> organizeColumnsInRows(List<String> columnIds, Map<String, Style> columnStyles) {
         List<String[]> rows = new ArrayList<>();
         List<String> currentRow = new ArrayList<>();
         float currentRowWidth = 0f;
 
-        for (String columnName : columns) {
-            Style style = getColumnStyle(columnStyles, columnName);
+        for (String columnId : columnIds) {
+            Style style = getColumnStyle(columnStyles, columnId);
             float columnWidth = (style != null && style.getWidth() != null) ?
                     (style.getWidth() / 100f) :
-                    (1f / columns.size()); // Largura padrão se não definida
+                    (1f / columnIds.size()); // Largura padrão se não definida
 
             // Se adicionar esta coluna exceder a largura máxima (100%), começamos uma nova linha
             if (currentRowWidth + columnWidth > MAX_ROW_WIDTH && !currentRow.isEmpty()) {
@@ -122,7 +123,7 @@ public final class TableStyleHelper {
             }
 
             // Adicionamos a coluna à linha atual
-            currentRow.add(columnName);
+            currentRow.add(columnId);
             currentRowWidth += columnWidth;
         }
 
@@ -132,8 +133,8 @@ public final class TableStyleHelper {
         }
 
         // Se nenhuma linha foi criada (o que seria estranho), adicione todas as colunas numa única linha
-        if (rows.isEmpty() && !columns.isEmpty()) {
-            rows.add(columns.toArray(new String[0]));
+        if (rows.isEmpty() && !columnIds.isEmpty()) {
+            rows.add(columnIds.toArray(new String[0]));
         }
 
         return rows;
@@ -163,10 +164,10 @@ public final class TableStyleHelper {
     /**
      * Método auxiliar para obter o estilo de uma coluna, tratando casos nulos.
      */
-    public static Style getColumnStyle(Map<String, Style> columnStyles, String columnName) {
-        if (columnStyles == null || !columnStyles.containsKey(columnName)) {
+    public static Style getColumnStyle(Map<String, Style> columnStyles, String columnId) {
+        if (columnStyles == null || !columnStyles.containsKey(columnId)) {
             return null;
         }
-        return columnStyles.get(columnName);
+        return columnStyles.get(columnId);
     }
 }
