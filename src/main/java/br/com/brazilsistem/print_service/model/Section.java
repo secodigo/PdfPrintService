@@ -44,6 +44,9 @@ public class Section {
     @Schema(description = "Cor alternativa para linhas", example = "#F5F5F5")
     private String alternateRowColor = "#F5F5F5"; // Cor alternativa (cinza claro padrão)
 
+    @Schema(description = "Largura percentual da seção (0-100)", example = "50")
+    private Float width; // Largura em percentual (0-100)
+
     /**
      * Retorna a lista de identificadores de colunas (chaves do mapa).
      *

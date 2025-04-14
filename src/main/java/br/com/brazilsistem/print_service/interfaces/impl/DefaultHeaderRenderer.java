@@ -63,7 +63,7 @@ public class DefaultHeaderRenderer implements HeaderRenderer {
         Table headerTable = new Table(UnitValue.createPercentArray(numColumns))
                 .setWidth(UnitValue.createPercentValue(100))
                 .setMarginTop(0)
-                .setMarginBottom(0);
+                .setMarginBottom(5);
 
         // Obter fontes para negrito e normal
         PdfFont boldFont = PdfStyleUtils.determineFont(true, false);

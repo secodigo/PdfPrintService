@@ -482,7 +482,7 @@ public class TableSectionRenderer implements SectionTypeRenderer {
         return new Table(UnitValue.createPercentArray(columnWidths))
                 .setWidth(UnitValue.createPercentValue(100))
                 .setBorder(Border.NO_BORDER)
-                .setMargins(0, 0, 0, 0)
+                .setMargins(0, 0, 5, 0)
                 .setPaddings(0, 0, 0, 0);
     }
 
