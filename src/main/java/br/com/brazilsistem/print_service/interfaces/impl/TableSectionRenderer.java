@@ -16,6 +16,7 @@ import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.UnitValue;
 import com.itextpdf.layout.properties.VerticalAlignment;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -264,7 +265,7 @@ public class TableSectionRenderer implements SectionTypeRenderer {
                     // Adicionar células de dados para cada coluna desta linha
                     for (int i = 0; i < rowColumnIds.length; i++) {
                         String columnId = rowColumnIds[i];
-                        Object value = rowData.getOrDefault(columnId, "");
+                        Object value = ObjectUtils.isNotEmpty(rowData) ? rowData.getOrDefault(columnId, "") : "";
                         Style columnStyle = TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnId);
                         String formattedValue = PdfStyleUtils.formatCellValue(value, columnStyle);
 
@@ -300,7 +301,7 @@ public class TableSectionRenderer implements SectionTypeRenderer {
             // Processar seções aninhadas para esta linha
             if (context.nestedSections != null && !context.nestedSections.isEmpty()) {
                 for (NestedSection nestedSection : context.nestedSections) {
-                    if (rowData.containsKey(nestedSection.getSourceField()) &&
+                    if (ObjectUtils.isNotEmpty(rowData) && rowData.containsKey(nestedSection.getSourceField()) &&
                             rowData.get(nestedSection.getSourceField()) instanceof List) {
 
                         @SuppressWarnings("unchecked")

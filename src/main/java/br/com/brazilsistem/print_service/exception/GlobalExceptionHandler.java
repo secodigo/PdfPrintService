@@ -57,4 +57,12 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ResourceResponse.error("Ocorreu um erro inesperado: " + ex.getMessage()));
     }
+
+    @ExceptionHandler(ExcelGenerationException.class)
+    public ResponseEntity<ResourceResponse> handleExcelGenerationException(ExcelGenerationException ex) {
+        logger.error("Erro na geração do Excel", ex);
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ResourceResponse.error("Erro na geração do Excel: " + ex.getMessage()));
+    }
 }

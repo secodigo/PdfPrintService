@@ -17,6 +17,8 @@ import com.itextpdf.layout.properties.Property;
 import com.itextpdf.layout.properties.TextAlignment;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
 import java.util.Locale;
 
@@ -279,20 +281,14 @@ public final class PdfStyleUtils {
 
         try {
             return switch (format) {
-                case "CURRENCY" -> {
+                case "CURRENCY", "PERCENTAGE"  -> {
                     if (value instanceof Number) {
-                        // Usar NumberFormat para moeda brasileira
                         NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+                        DecimalFormatSymbols symbols = ((DecimalFormat) currencyFormatter).getDecimalFormatSymbols();
+                        symbols.setCurrencySymbol("");
+                        ((DecimalFormat) currencyFormatter).setDecimalFormatSymbols(symbols);
+
                         yield currencyFormatter.format(((Number) value).doubleValue());
-                    }
-                    yield value.toString();
-                }
-                case "PERCENTAGE" -> {
-                    if (value instanceof Number) {
-                        // Usar NumberFormat para percentuais em formato brasileiro
-                        NumberFormat percentFormatter = NumberFormat.getPercentInstance(new Locale("pt", "BR"));
-                        percentFormatter.setMaximumFractionDigits(2);
-                        yield percentFormatter.format(((Number) value).doubleValue() / 100);
                     }
                     yield value.toString();
                 }
