@@ -109,6 +109,8 @@ public class ExcelGenerationService {
         // Adiciona os dados a partir da segunda linha
         int rowNum = 1;
         for (Map<String, Object> dataRow : section.getData()) {
+            if (dataRow == null) continue;
+
             Row row = sheet.createRow(rowNum++);
             for (int i = 0; i < columnIds.size(); i++) {
                 String columnId = columnIds.get(i);

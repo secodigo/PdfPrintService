@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -215,102 +216,128 @@ public class TableSectionRenderer implements SectionTypeRenderer {
 
     /**
      * Renderiza dados para múltiplas linhas de colunas
+     * Modificado para tratar linhas nulas (rowData == null)
      */
     private void renderDataWithMultipleRows(TableRenderingContext context, Section section) throws IOException {
         int rowIndex = 0;
-        for (Map<String, Object> rowData : section.getData()) {
+        List<Map<String, Object>> data = section.getData();
+
+        for (int i = 0; i < data.size(); i++) {
+            Map<String, Object> rowData = data.get(i);
+            boolean isEmptyRow = (rowData == null);
+
             // Determinar cor para linha atual (alternando se necessário)
             Color rowColor = null;
             if (context.useAlternateRowColor && rowIndex % 2 == 1) {
                 rowColor = context.alternateRowColor;
             }
 
-            // Para cada grupo de colunas (linha na definição de colunas)
-            for (String[] rowColumnIds : context.columnRows) {
-                if (rowColumnIds.length > 0) {
-                    // Calcular larguras específicas para esta linha de colunas
-                    float[] rowWidths = new float[rowColumnIds.length];
-                    float totalWidth = 0;
+            // Se for uma linha vazia, criar uma célula única que ocupa toda a largura
+            if (isEmptyRow) {
+                Cell emptyRowCell = new Cell(1, context.totalColumns)
+                        .setBorder(Border.NO_BORDER)
+                        .setPadding(0)
+                        .setHeight(10f); // Definir altura explícita
 
-                    // Primeira passagem: obter as larguras originais definidas no JSON
-                    for (int i = 0; i < rowColumnIds.length; i++) {
-                        String columnId = rowColumnIds[i];
-                        Style style = TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnId);
-
-                        if (style != null && style.getWidth() != null) {
-                            // Usar a largura exata definida no JSON
-                            rowWidths[i] = style.getWidth();
-                        } else {
-                            // Para colunas sem largura definida, usar um padrão
-                            rowWidths[i] = 100f / rowColumnIds.length;
-                        }
-                        totalWidth += rowWidths[i];
-                    }
-
-                    // Criar uma célula para conter toda a linha de colunas
-                    Cell rowContainer = new Cell(1, context.totalColumns)
-                            .setBorder(Border.NO_BORDER)
-                            .setPadding(0);
-
-                    if (rowColor != null) {
-                        rowContainer.setBackgroundColor(rowColor);
-                    }
-
-                    // Criar uma subtabela que respeita as larguras definidas
-                    Table rowTable = new Table(UnitValue.createPercentArray(rowWidths))
-                            .setWidth(UnitValue.createPercentValue(100))
-                            .setBorder(Border.NO_BORDER)
-                            .setPaddings(0, 0, 0, 0);
-
-                    // Adicionar células de dados para cada coluna desta linha
-                    for (int i = 0; i < rowColumnIds.length; i++) {
-                        String columnId = rowColumnIds[i];
-                        Object value = ObjectUtils.isNotEmpty(rowData) ? rowData.getOrDefault(columnId, "") : "";
-                        Style columnStyle = TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnId);
-                        String formattedValue = PdfStyleUtils.formatCellValue(value, columnStyle);
-
-                        Cell dataCell = new Cell()
-                                .add(new Paragraph(formattedValue))
-                                .setBorder(Border.NO_BORDER);
-
-                        // Aplicar cor de fundo se fornecida
-                        if (rowColor != null) {
-                            dataCell.setBackgroundColor(rowColor);
-                        }
-
-                        // Aplicar estilos de célula
-                        PdfStyleUtils.applyCellStyle(dataCell, columnStyle);
-
-                        // Aplicar apenas espaçamento lateral, mantendo o vertical original
-                        dataCell.setPaddingLeft(HORIZONTAL_CELL_PADDING);
-                        dataCell.setPaddingRight(HORIZONTAL_CELL_PADDING);
-                        dataCell.setPaddingTop(VERTICAL_CELL_PADDING);
-                        dataCell.setPaddingBottom(VERTICAL_CELL_PADDING);
-
-                        rowTable.addCell(dataCell);
-                    }
-
-                    // Adicionar a subtabela à célula contêiner
-                    rowContainer.add(rowTable);
-
-                    // Adicionar a célula contêiner à tabela principal
-                    context.mainTable.addCell(rowContainer);
+                if (rowColor != null) {
+                    emptyRowCell.setBackgroundColor(rowColor);
                 }
-            }
 
-            // Processar seções aninhadas para esta linha
-            if (context.nestedSections != null && !context.nestedSections.isEmpty()) {
-                for (NestedSection nestedSection : context.nestedSections) {
-                    if (ObjectUtils.isNotEmpty(rowData) && rowData.containsKey(nestedSection.getSourceField()) &&
-                            rowData.get(nestedSection.getSourceField()) instanceof List) {
+                // Adicionar um espaço para garantir que a célula tenha conteúdo
+                Paragraph emptyParagraph = new Paragraph(" ");
+                emptyParagraph.setFixedLeading(10f); // Altura fixa para o parágrafo vazio
+                emptyRowCell.add(emptyParagraph);
 
-                        @SuppressWarnings("unchecked")
-                        List<Map<String, Object>> nestedData =
-                                (List<Map<String, Object>>) rowData.get(nestedSection.getSourceField());
+                // Adicionar a célula vazia diretamente à tabela principal
+                context.mainTable.addCell(emptyRowCell);
+            } else {
+                // Para cada grupo de colunas (linha na definição de colunas)
+                for (String[] rowColumnIds : context.columnRows) {
+                    if (rowColumnIds.length > 0) {
+                        // Calcular larguras específicas para esta linha de colunas
+                        float[] rowWidths = new float[rowColumnIds.length];
+                        float totalWidth = 0;
 
-                        if (nestedData != null && !nestedData.isEmpty()) {
-                            renderNestedSectionData(context.mainTable, nestedSection,
-                                    nestedData, context.totalColumns);
+                        // Primeira passagem: obter as larguras originais definidas no JSON
+                        for (int j = 0; j < rowColumnIds.length; j++) {
+                            String columnId = rowColumnIds[j];
+                            Style style = TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnId);
+
+                            if (style != null && style.getWidth() != null) {
+                                // Usar a largura exata definida no JSON
+                                rowWidths[j] = style.getWidth();
+                            } else {
+                                // Para colunas sem largura definida, usar um padrão
+                                rowWidths[j] = 100f / rowColumnIds.length;
+                            }
+                            totalWidth += rowWidths[j];
+                        }
+
+                        // Criar uma célula para conter toda a linha de colunas
+                        Cell rowContainer = new Cell(1, context.totalColumns)
+                                .setBorder(Border.NO_BORDER)
+                                .setPadding(0);
+
+                        if (rowColor != null) {
+                            rowContainer.setBackgroundColor(rowColor);
+                        }
+
+                        // Criar uma subtabela que respeita as larguras definidas
+                        Table rowTable = new Table(UnitValue.createPercentArray(rowWidths))
+                                .setWidth(UnitValue.createPercentValue(100))
+                                .setBorder(Border.NO_BORDER)
+                                .setPaddings(0, 0, 0, 0);
+
+                        // Adicionar células de dados para cada coluna desta linha
+                        for (int j = 0; j < rowColumnIds.length; j++) {
+                            String columnId = rowColumnIds[j];
+                            Object value = rowData.getOrDefault(columnId, "");
+                            Style columnStyle = TableStyleHelper.getColumnStyle(section.getColumnStyles(), columnId);
+                            String formattedValue = PdfStyleUtils.formatCellValue(value, columnStyle);
+
+                            Cell dataCell = new Cell()
+                                    .add(new Paragraph(formattedValue))
+                                    .setBorder(Border.NO_BORDER);
+
+                            // Aplicar cor de fundo se fornecida
+                            if (rowColor != null) {
+                                dataCell.setBackgroundColor(rowColor);
+                            }
+
+                            // Aplicar estilos de célula
+                            PdfStyleUtils.applyCellStyle(dataCell, columnStyle);
+
+                            // Aplicar apenas espaçamento lateral, mantendo o vertical original
+                            dataCell.setPaddingLeft(HORIZONTAL_CELL_PADDING);
+                            dataCell.setPaddingRight(HORIZONTAL_CELL_PADDING);
+                            dataCell.setPaddingTop(VERTICAL_CELL_PADDING);
+                            dataCell.setPaddingBottom(VERTICAL_CELL_PADDING);
+
+                            rowTable.addCell(dataCell);
+                        }
+
+                        // Adicionar a subtabela à célula contêiner
+                        rowContainer.add(rowTable);
+
+                        // Adicionar a célula contêiner à tabela principal
+                        context.mainTable.addCell(rowContainer);
+                    }
+                }
+
+                // Processar seções aninhadas para esta linha
+                if (context.nestedSections != null && !context.nestedSections.isEmpty()) {
+                    for (NestedSection nestedSection : context.nestedSections) {
+                        if (rowData.containsKey(nestedSection.getSourceField()) &&
+                                rowData.get(nestedSection.getSourceField()) instanceof List) {
+
+                            @SuppressWarnings("unchecked")
+                            List<Map<String, Object>> nestedData =
+                                    (List<Map<String, Object>>) rowData.get(nestedSection.getSourceField());
+
+                            if (nestedData != null && !nestedData.isEmpty()) {
+                                renderNestedSectionData(context.mainTable, nestedSection,
+                                        nestedData, context.totalColumns);
+                            }
                         }
                     }
                 }
@@ -472,6 +499,7 @@ public class TableSectionRenderer implements SectionTypeRenderer {
      * Verifica se a seção contém dados válidos para uma tabela.
      */
     private boolean hasValidTableData(Section section) {
+        // A tabela é válida se tiver colunas definidas e dados (mesmo que tenha itens nulos)
         return section.getColumnIds() != null && !section.getColumnIds().isEmpty() &&
                 section.getData() != null && !section.getData().isEmpty();
     }

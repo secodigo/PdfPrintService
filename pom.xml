@@ -104,6 +104,18 @@
 					</excludes>
 				</configuration>
 			</plugin>
+			<plugin>
+				<groupId>org.graalvm.buildtools</groupId>
+				<artifactId>native-maven-plugin</artifactId>
+				<configuration>
+					<buildArgs>
+						<!-- Adicionar o charset Windows-1252 à imagem nativa -->
+						<buildArg>-H:+AddAllCharsets</buildArg>
+						<!-- Ou apenas para o charset específico -->
+						<!-- <buildArg>-H:IncludeResourceBundles=sun.awt.resources.awt,java.nio.charset.ext.CP1252</buildArg> -->
+					</buildArgs>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 </project>
