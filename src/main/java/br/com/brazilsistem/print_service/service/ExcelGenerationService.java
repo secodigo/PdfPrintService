@@ -180,7 +180,8 @@ public class ExcelGenerationService {
             Row headerRow = sheet.getRow(0);
             if (headerRow != null) {
                 for (int j = 0; j < headerRow.getLastCellNum(); j++) {
-                    sheet.autoSizeColumn(j);
+                    // Definir largura fixa para colunas (15 caracteres)
+                    sheet.setColumnWidth(j, 15 * 256); // 256 é a unidade para largura de coluna no POI
                 }
             }
         }
